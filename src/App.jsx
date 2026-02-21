@@ -33,6 +33,7 @@ const DOCTOR_LABEL = "Dr.";
 const VISITOR_LIST_LABEL = "\u6e38\u89c8\u8005\u540d\u5355";
 const UP_MARK = "\u25b2";
 const DOWN_MARK = "\u25bc";
+const DRAG_THRESHOLD = 6;
 
 const PHASE_ENTRY = "entry";
 const PHASE_FADE = "fade-content";
@@ -136,16 +137,29 @@ export default function App() {
   const topBarRef = useRef(null);
   const detailDrawerRef = useRef(null);
   const detailScrollRef = useRef(null);
+  const cursorRef = useRef(null);
   const boardTouchDragRef = useRef({
     active: false,
     startX: 0,
     startY: 0,
     startScrollLeft: 0,
   });
+  const boardMouseDragRef = useRef({
+    active: false,
+    startX: 0,
+    startScrollLeft: 0,
+    didDrag: false,
+  });
   const detailTouchDragRef = useRef({
     active: false,
     startY: 0,
     startScrollTop: 0,
+  });
+  const detailMouseDragRef = useRef({
+    active: false,
+    startY: 0,
+    startScrollTop: 0,
+    didDrag: false,
   });
 
   const [selectedIndex, setSelectedIndex] = useState(latestIndex);
@@ -160,6 +174,32 @@ export default function App() {
   const [detailActivityIndex, setDetailActivityIndex] = useState(0);
   const [connections, setConnections] = useState([]);
   const [debuffHintOpen, setDebuffHintOpen] = useState(false);
+  const [isBoardMouseDragging, setIsBoardMouseDragging] = useState(false);
+  const [isDetailMouseDragging, setIsDetailMouseDragging] = useState(false);
+
+  const updateDetailLayout = useCallback(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const width = window.innerWidth || 0;
+    const height = window.innerHeight || 0;
+    if (!width || !height) {
+      return;
+    }
+    const widthScale = width / 1400;
+    const heightScale = height / 800;
+    const scale = Math.max(0.92, Math.min(1.35, Math.min(widthScale, heightScale)));
+    document.documentElement.style.setProperty(
+      "--detail-font-scale",
+      scale.toFixed(3),
+    );
+    const rawDrawerWidth = Math.max(width / 3, Math.min(width * 0.38, 520));
+    const drawerWidth = Math.min(rawDrawerWidth, width - 16);
+    document.documentElement.style.setProperty(
+      "--detail-drawer-width",
+      `${Math.round(drawerWidth)}px`,
+    );
+  }, []);
   const [boardLayout, setBoardLayout] = useState({
     cardWidth: 220,
     cardHeight: 82,
@@ -464,6 +504,69 @@ export default function App() {
     });
   }, [activeDay]);
 
+  const stopBoardMouseDrag = useCallback(() => {
+    boardMouseDragRef.current.active = false;
+    setIsBoardMouseDragging(false);
+  }, []);
+
+  const handleBoardMouseMove = useCallback((event) => {
+    const boardElement = boardRef.current;
+    const dragState = boardMouseDragRef.current;
+    if (!boardElement || !dragState.active) {
+      return;
+    }
+
+    const deltaX = event.clientX - dragState.startX;
+    if (!dragState.didDrag && Math.abs(deltaX) < DRAG_THRESHOLD) {
+      return;
+    }
+    if (!dragState.didDrag) {
+      dragState.didDrag = true;
+      setIsBoardMouseDragging(true);
+    }
+    boardElement.scrollLeft = dragState.startScrollLeft - deltaX;
+    event.preventDefault();
+  }, []);
+
+  const handleBoardMouseUp = useCallback(() => {
+    if (!boardMouseDragRef.current.active) {
+      return;
+    }
+    stopBoardMouseDrag();
+    window.removeEventListener("mousemove", handleBoardMouseMove);
+    window.removeEventListener("mouseup", handleBoardMouseUp);
+  }, [handleBoardMouseMove, stopBoardMouseDrag]);
+
+  const handleBoardMouseDown = useCallback(
+    (event) => {
+      if (event.button !== 0) {
+        return;
+      }
+      const boardElement = boardRef.current;
+      if (!boardElement) {
+        return;
+      }
+
+      boardMouseDragRef.current = {
+        active: true,
+        startX: event.clientX,
+        startScrollLeft: boardElement.scrollLeft,
+        didDrag: false,
+      };
+      window.addEventListener("mousemove", handleBoardMouseMove);
+      window.addEventListener("mouseup", handleBoardMouseUp);
+    },
+    [handleBoardMouseMove, handleBoardMouseUp],
+  );
+
+  const handleBoardClickCapture = useCallback((event) => {
+    if (boardMouseDragRef.current.didDrag) {
+      boardMouseDragRef.current.didDrag = false;
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }, []);
+
   const stopBoardTouchDrag = useCallback(() => {
     boardTouchDragRef.current.active = false;
   }, []);
@@ -512,6 +615,74 @@ export default function App() {
   const handleBoardTouchEnd = useCallback(() => {
     stopBoardTouchDrag();
   }, [stopBoardTouchDrag]);
+
+  const stopDetailMouseDrag = useCallback(() => {
+    detailMouseDragRef.current.active = false;
+    setIsDetailMouseDragging(false);
+  }, []);
+
+  const handleDetailMouseMove = useCallback((event) => {
+    const detailElement = detailScrollRef.current;
+    const dragState = detailMouseDragRef.current;
+    if (!detailElement || !dragState.active) {
+      return;
+    }
+
+    const deltaY = event.clientY - dragState.startY;
+    if (!dragState.didDrag && Math.abs(deltaY) < DRAG_THRESHOLD) {
+      return;
+    }
+    if (!dragState.didDrag) {
+      dragState.didDrag = true;
+      setIsDetailMouseDragging(true);
+    }
+    const nextScrollTop = dragState.startScrollTop - deltaY;
+    const maxScrollTop = Math.max(
+      0,
+      detailElement.scrollHeight - detailElement.clientHeight,
+    );
+    detailElement.scrollTop = Math.min(maxScrollTop, Math.max(0, nextScrollTop));
+    event.preventDefault();
+  }, []);
+
+  const handleDetailMouseUp = useCallback(() => {
+    if (!detailMouseDragRef.current.active) {
+      return;
+    }
+    stopDetailMouseDrag();
+    window.removeEventListener("mousemove", handleDetailMouseMove);
+    window.removeEventListener("mouseup", handleDetailMouseUp);
+  }, [handleDetailMouseMove, stopDetailMouseDrag]);
+
+  const handleDetailMouseDown = useCallback(
+    (event) => {
+      if (event.button !== 0) {
+        return;
+      }
+      const detailElement = detailScrollRef.current;
+      if (!detailElement) {
+        return;
+      }
+
+      detailMouseDragRef.current = {
+        active: true,
+        startY: event.clientY,
+        startScrollTop: detailElement.scrollTop,
+        didDrag: false,
+      };
+      window.addEventListener("mousemove", handleDetailMouseMove);
+      window.addEventListener("mouseup", handleDetailMouseUp);
+    },
+    [handleDetailMouseMove, handleDetailMouseUp],
+  );
+
+  const handleDetailClickCapture = useCallback((event) => {
+    if (detailMouseDragRef.current.didDrag) {
+      detailMouseDragRef.current.didDrag = false;
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }, []);
 
   const stopDetailTouchDrag = useCallback(() => {
     detailTouchDragRef.current.active = false;
@@ -569,6 +740,124 @@ export default function App() {
   const handleDetailTouchEnd = useCallback(() => {
     stopDetailTouchDrag();
   }, [stopDetailTouchDrag]);
+
+  useEffect(() => {
+    return () => {
+      window.removeEventListener("mousemove", handleBoardMouseMove);
+      window.removeEventListener("mouseup", handleBoardMouseUp);
+      window.removeEventListener("mousemove", handleDetailMouseMove);
+      window.removeEventListener("mouseup", handleDetailMouseUp);
+    };
+  }, [handleBoardMouseMove, handleBoardMouseUp, handleDetailMouseMove, handleDetailMouseUp]);
+
+  useEffect(() => {
+    updateDetailLayout();
+    window.addEventListener("resize", updateDetailLayout);
+    window.addEventListener("orientationchange", updateDetailLayout);
+    return () => {
+      window.removeEventListener("resize", updateDetailLayout);
+      window.removeEventListener("orientationchange", updateDetailLayout);
+    };
+  }, [updateDetailLayout]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const cursor = cursorRef.current;
+    if (!cursor) {
+      return;
+    }
+    const media = window.matchMedia?.("(hover: hover) and (pointer: fine)");
+    if (!media?.matches) {
+      return;
+    }
+
+    let hotspotX = 8;
+    let hotspotY = 8;
+    const readHotspot = () => {
+      const styles = window.getComputedStyle(document.documentElement);
+      const parsePx = (value, fallback) => {
+        const parsed = Number.parseFloat(value);
+        return Number.isFinite(parsed) ? parsed : fallback;
+      };
+      hotspotX = parsePx(
+        styles.getPropertyValue("--rouge-cursor-hotspot-x"),
+        hotspotX,
+      );
+      hotspotY = parsePx(
+        styles.getPropertyValue("--rouge-cursor-hotspot-y"),
+        hotspotY,
+      );
+    };
+    readHotspot();
+
+    const position = { x: 0, y: 0 };
+    let frame = 0;
+    let visible = false;
+
+    const updatePosition = () => {
+      frame = 0;
+      cursor.style.transform = `translate3d(${Math.round(
+        position.x - hotspotX,
+      )}px, ${Math.round(position.y - hotspotY)}px, 0)`;
+    };
+
+    const handleMove = (event) => {
+      position.x = event.clientX;
+      position.y = event.clientY;
+      if (!visible) {
+        cursor.style.opacity = "1";
+        visible = true;
+      }
+      if (!frame) {
+        frame = window.requestAnimationFrame(updatePosition);
+      }
+    };
+
+    const handleMouseDown = (event) => {
+      if (event.button !== 0) {
+        return;
+      }
+      cursor.classList.remove("rouge-cursor-click");
+      void cursor.offsetWidth;
+      cursor.classList.add("rouge-cursor-click");
+    };
+
+    const handleAnimationEnd = (event) => {
+      if (event.animationName === "cursorClickRotate") {
+        cursor.classList.remove("rouge-cursor-click");
+      }
+    };
+
+    const handleWindowOut = (event) => {
+      if (event.relatedTarget) {
+        return;
+      }
+      cursor.style.opacity = "0";
+      visible = false;
+    };
+
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mousedown", handleMouseDown);
+    window.addEventListener("blur", handleWindowOut);
+    window.addEventListener("mouseout", handleWindowOut);
+    window.addEventListener("resize", readHotspot);
+    window.addEventListener("orientationchange", readHotspot);
+    cursor.addEventListener("animationend", handleAnimationEnd);
+    return () => {
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mousedown", handleMouseDown);
+      window.removeEventListener("blur", handleWindowOut);
+      window.removeEventListener("mouseout", handleWindowOut);
+      window.removeEventListener("resize", readHotspot);
+      window.removeEventListener("orientationchange", readHotspot);
+      cursor.removeEventListener("animationend", handleAnimationEnd);
+      if (frame) {
+        window.cancelAnimationFrame(frame);
+      }
+    };
+  }, []);
 
   const recalculateConnections = useCallback(() => {
     if (
@@ -1228,8 +1517,10 @@ export default function App() {
         <div className="relative min-h-0 flex-1 overflow-hidden p-3 sm:p-5">
           <div
             ref={boardRef}
-            className="rouge-board-scroll h-full w-full overflow-auto rounded-lg border border-white/20 bg-black/20 p-4"
+            className={`rouge-board-scroll rouge-drag-scroll-x h-full w-full overflow-auto rounded-lg border border-white/20 bg-black/20 p-4 ${isBoardMouseDragging ? "rouge-drag-active" : ""}`}
             onScroll={recalculateConnections}
+            onMouseDown={handleBoardMouseDown}
+            onClickCapture={handleBoardClickCapture}
             onTouchStart={handleBoardTouchStart}
             onTouchMove={handleBoardTouchMove}
             onTouchEnd={handleBoardTouchEnd}
@@ -1326,8 +1617,8 @@ export default function App() {
                                     className={`rouge-card rouge-activity-card ${isChosen ? "rouge-card-chosen" : ""} ${locked ? "rouge-card-locked" : ""} ${focused ? "rouge-card-focused" : ""} ${revealed ? "" : "rouge-card-placeholder"}`}
                                     style={{
                                       "--rouge-card-color": activityColor,
-                                      "--rouge-card-bg": withAlpha(activityColor, 0.46),
-                                      "--rouge-card-border": withAlpha(activityColor, 0.92),
+                                      "--rouge-card-bg": withAlpha(activityColor, 0.62),
+                                      "--rouge-card-border": withAlpha(activityColor, 0.98),
                                     }}
                                     onClick={() => {
                                       if (!locked) {
@@ -1377,7 +1668,9 @@ export default function App() {
         >
           <div
             ref={detailScrollRef}
-            className="rouge-detail-inner"
+            className={`rouge-detail-inner rouge-drag-scroll-y ${isDetailMouseDragging ? "rouge-drag-active" : ""}`}
+            onMouseDown={handleDetailMouseDown}
+            onClickCapture={handleDetailClickCapture}
             onTouchStart={handleDetailTouchStart}
             onTouchMove={handleDetailTouchMove}
             onTouchEnd={handleDetailTouchEnd}
@@ -1532,6 +1825,10 @@ export default function App() {
           </div>
         </div>
       </section>
+
+      <div ref={cursorRef} className="rouge-custom-cursor" aria-hidden="true">
+        <div className="rouge-custom-cursor-icon" />
+      </div>
     </main>
   );
 }
