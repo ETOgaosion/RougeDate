@@ -26,6 +26,7 @@ const VIEWER_LABEL = "\u6e38\u5ba2";
 const ENTER_EXPLORE_LABEL = "\u8fdb\u5165\u63a2\u7d22";
 const START_ACTION_LABEL = "\u524d\u5f80\u51fa\u53d1";
 const RESET_LABEL = "\u91cd\u7f6e";
+const RETURN_ENTRY_LABEL = "\u8fd4\u56de\u5165\u53e3";
 const RESET_CONFIRM_TEXT =
   "\u5c06\u6e05\u7a7a\u6240\u6709\u5df2\u9009\u5361\u7247\u5e76\u8fd4\u56de\u9875\u9762\u8d77\u70b9\uff0c\u786e\u8ba4\u5417\uff1f";
 const DOCTOR_LABEL = "Dr.";
@@ -133,6 +134,19 @@ export default function App() {
   const cardRefs = useRef({});
   const debuffTimerRef = useRef(null);
   const topBarRef = useRef(null);
+  const detailDrawerRef = useRef(null);
+  const detailScrollRef = useRef(null);
+  const boardTouchDragRef = useRef({
+    active: false,
+    startX: 0,
+    startY: 0,
+    startScrollLeft: 0,
+  });
+  const detailTouchDragRef = useRef({
+    active: false,
+    startY: 0,
+    startScrollTop: 0,
+  });
 
   const [selectedIndex, setSelectedIndex] = useState(latestIndex);
   const [activeTimeIndex, setActiveTimeIndex] = useState(latestIndex);
@@ -450,6 +464,112 @@ export default function App() {
     });
   }, [activeDay]);
 
+  const stopBoardTouchDrag = useCallback(() => {
+    boardTouchDragRef.current.active = false;
+  }, []);
+
+  const handleBoardTouchStart = useCallback(
+    (event) => {
+      const boardElement = boardRef.current;
+      if (!boardElement || event.touches.length !== 1) {
+        stopBoardTouchDrag();
+        return;
+      }
+
+      const touch = event.touches[0];
+      boardTouchDragRef.current = {
+        active: true,
+        startX: touch.clientX,
+        startY: touch.clientY,
+        startScrollLeft: boardElement.scrollLeft,
+      };
+    },
+    [stopBoardTouchDrag],
+  );
+
+  const handleBoardTouchMove = useCallback((event) => {
+    const boardElement = boardRef.current;
+    const dragState = boardTouchDragRef.current;
+    if (!boardElement || !dragState.active || event.touches.length !== 1) {
+      return;
+    }
+
+    const touch = event.touches[0];
+    const deltaX = touch.clientX - dragState.startX;
+    const deltaY = touch.clientY - dragState.startY;
+    const dominantDelta =
+      Math.abs(deltaX) >= Math.abs(deltaY) ? deltaX : deltaY;
+    if (Math.abs(dominantDelta) < 4) {
+      return;
+    }
+
+    boardElement.scrollLeft = dragState.startScrollLeft - dominantDelta;
+    if (event.cancelable) {
+      event.preventDefault();
+    }
+  }, []);
+
+  const handleBoardTouchEnd = useCallback(() => {
+    stopBoardTouchDrag();
+  }, [stopBoardTouchDrag]);
+
+  const stopDetailTouchDrag = useCallback(() => {
+    detailTouchDragRef.current.active = false;
+  }, []);
+
+  const handleDetailTouchStart = useCallback(
+    (event) => {
+      const detailElement = detailScrollRef.current;
+      if (!detailElement || event.touches.length !== 1) {
+        stopDetailTouchDrag();
+        return;
+      }
+      if (
+        !window.matchMedia("(max-width: 1024px) and (orientation: portrait)")
+          .matches
+      ) {
+        stopDetailTouchDrag();
+        return;
+      }
+
+      const touch = event.touches[0];
+      detailTouchDragRef.current = {
+        active: true,
+        startY: touch.clientY,
+        startScrollTop: detailElement.scrollTop,
+      };
+    },
+    [stopDetailTouchDrag],
+  );
+
+  const handleDetailTouchMove = useCallback((event) => {
+    const detailElement = detailScrollRef.current;
+    const dragState = detailTouchDragRef.current;
+    if (!detailElement || !dragState.active || event.touches.length !== 1) {
+      return;
+    }
+
+    const touch = event.touches[0];
+    const deltaY = touch.clientY - dragState.startY;
+    if (Math.abs(deltaY) < 3) {
+      return;
+    }
+
+    const nextScrollTop = dragState.startScrollTop + deltaY;
+    const maxScrollTop = Math.max(
+      0,
+      detailElement.scrollHeight - detailElement.clientHeight,
+    );
+    detailElement.scrollTop = Math.min(maxScrollTop, Math.max(0, nextScrollTop));
+    if (event.cancelable) {
+      event.preventDefault();
+    }
+  }, []);
+
+  const handleDetailTouchEnd = useCallback(() => {
+    stopDetailTouchDrag();
+  }, [stopDetailTouchDrag]);
+
   const recalculateConnections = useCallback(() => {
     if (
       !boardRef.current ||
@@ -757,6 +877,30 @@ export default function App() {
     setDebuffHintOpen(false);
   }, [activeDayPosition, activeTimeIndex]);
 
+  useEffect(() => {
+    if (!detailCard) {
+      return undefined;
+    }
+
+    const closeDrawerOnOutsidePointer = (event) => {
+      const drawerElement = detailDrawerRef.current;
+      const target = event.target;
+      if (!drawerElement || !(target instanceof Node)) {
+        return;
+      }
+      if (drawerElement.contains(target)) {
+        return;
+      }
+      setDetailCardKey("");
+      setDetailActivityIndex(0);
+    };
+
+    window.addEventListener("pointerdown", closeDrawerOnOutsidePointer, true);
+    return () => {
+      window.removeEventListener("pointerdown", closeDrawerOnOutsidePointer, true);
+    };
+  }, [detailCard]);
+
   useEffect(
     () => () => {
       if (debuffTimerRef.current) {
@@ -815,6 +959,26 @@ export default function App() {
       debuffTimerRef.current = null;
     }, 2400);
   }, []);
+
+  const returnToEntry = useCallback(() => {
+    setChosenCardsByDay({});
+    setDetailCardKey("");
+    setDetailActivityIndex(0);
+    setActiveDayPosition(0);
+    setDebuffHintOpen(false);
+    setConnections([]);
+    setSelectedIndex(activeTimeIndex);
+    setPhase(PHASE_ENTRY);
+
+    const boardElement = boardRef.current;
+    if (boardElement) {
+      boardElement.scrollTo({
+        left: 0,
+        top: 0,
+        behavior: "smooth",
+      });
+    }
+  }, [activeTimeIndex]);
 
   useLayoutEffect(() => {
     if (phase !== PHASE_ROUGE) {
@@ -1066,6 +1230,10 @@ export default function App() {
             ref={boardRef}
             className="rouge-board-scroll h-full w-full overflow-auto rounded-lg border border-white/20 bg-black/20 p-4"
             onScroll={recalculateConnections}
+            onTouchStart={handleBoardTouchStart}
+            onTouchMove={handleBoardTouchMove}
+            onTouchEnd={handleBoardTouchEnd}
+            onTouchCancel={handleBoardTouchEnd}
             style={{
               "--card-width": `${boardLayout.cardWidth}px`,
               "--card-height": `${boardLayout.cardHeight}px`,
@@ -1203,8 +1371,18 @@ export default function App() {
           </div>
         </div>
 
-        <aside className={`rouge-detail-drawer ${detailCard ? "rouge-detail-open" : ""}`}>
-          <div className="rouge-detail-inner">
+        <aside
+          ref={detailDrawerRef}
+          className={`rouge-detail-drawer ${detailCard ? "rouge-detail-open" : ""}`}
+        >
+          <div
+            ref={detailScrollRef}
+            className="rouge-detail-inner"
+            onTouchStart={handleDetailTouchStart}
+            onTouchMove={handleDetailTouchMove}
+            onTouchEnd={handleDetailTouchEnd}
+            onTouchCancel={handleDetailTouchEnd}
+          >
             {!detailCard && (
               <div className="text-sm text-white/80">Click a card to view details.</div>
             )}
@@ -1328,19 +1506,29 @@ export default function App() {
             <p className="success-page-mate">{mateText}</p>
           </div>
 
-          <div className="success-page-list-wrap">
-            {chosenCardTitles.length === 0 && (
-              <p className="success-page-empty">-</p>
-            )}
-            {chosenCardTitles.length > 0 && (
-              <ul className="success-page-list">
-                {chosenCardTitles.map((title, titleIndex) => (
-                  <li key={`${title}-${titleIndex}`} className="success-page-item">
-                    {title}
-                  </li>
-                ))}
-              </ul>
-            )}
+          <div className="success-page-bottom">
+            <div className="success-page-list-wrap">
+              {chosenCardTitles.length === 0 && (
+                <p className="success-page-empty">-</p>
+              )}
+              {chosenCardTitles.length > 0 && (
+                <ul className="success-page-list">
+                  {chosenCardTitles.map((title, titleIndex) => (
+                    <li key={`${title}-${titleIndex}`} className="success-page-item">
+                      {title}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <button
+              type="button"
+              className="success-return-btn"
+              onClick={returnToEntry}
+            >
+              {RETURN_ENTRY_LABEL}
+            </button>
           </div>
         </div>
       </section>
