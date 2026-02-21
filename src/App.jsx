@@ -461,31 +461,61 @@ export default function App() {
       return;
     }
 
-    const getAnchor = (element, side) => {
-      const canvasRect = boardCanvasRef.current.getBoundingClientRect();
+    const getElementRectWithinCanvas = (element) => {
+      const canvas = boardCanvasRef.current;
+      let left = 0;
+      let top = 0;
+      let node = element;
+
+      while (node && node !== canvas) {
+        left += node.offsetLeft;
+        top += node.offsetTop;
+        node = node.offsetParent;
+      }
+
+      if (node === canvas) {
+        return {
+          left,
+          top,
+          width: element.offsetWidth,
+          height: element.offsetHeight,
+        };
+      }
+
+      const canvasRect = canvas.getBoundingClientRect();
       const rect = element.getBoundingClientRect();
+      return {
+        left: rect.left - canvasRect.left,
+        top: rect.top - canvasRect.top,
+        width: rect.width,
+        height: rect.height,
+      };
+    };
+
+    const getAnchor = (element, side) => {
+      const rect = getElementRectWithinCanvas(element);
 
       if (side === "right") {
         return {
-          x: rect.right - canvasRect.left,
-          y: rect.top + rect.height / 2 - canvasRect.top,
+          x: rect.left + rect.width,
+          y: rect.top + rect.height / 2,
         };
       }
       if (side === "left") {
         return {
-          x: rect.left - canvasRect.left,
-          y: rect.top + rect.height / 2 - canvasRect.top,
+          x: rect.left,
+          y: rect.top + rect.height / 2,
         };
       }
       if (side === "bottom") {
         return {
-          x: rect.left + rect.width / 2 - canvasRect.left,
-          y: rect.bottom - canvasRect.top,
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height,
         };
       }
       return {
-        x: rect.left + rect.width / 2 - canvasRect.left,
-        y: rect.top - canvasRect.top,
+        x: rect.left + rect.width / 2,
+        y: rect.top,
       };
     };
 
