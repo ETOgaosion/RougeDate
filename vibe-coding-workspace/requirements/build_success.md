@@ -1,19 +1,13 @@
-# Requirement 1: Build Rouge Page
+# Requirement 1: Build Success Page
 
 PRE-REQUEST: Read [base.md](../knowlegde/base.md)
 
 CONTEXT: As a universal framework, we need to seperate the date logics and the frameworks. We need to create a json format date arrangement file reading mechanism. You need to use React + Tailwind CSS to build.
 
-MATERIALS: Look at 
-- [example_cards.png](./imgs/example_cards.png) 
-- [example_cards_details.png](./imgs/example_cards_details.png)
-
 TASK: you should create a main page
-- I have write my plans in [time_1.json](../../date_arrangement/time_1.json), read the format and convert it to rouge page in our frameworks
-- After user click the entry page enter, detect which time they clicked and open time_x.json accordingly to handle, there should be animation connect these:
-    - The contents above main background fade
-    - the main background become bright
-    - use a Cross dissolution effect to switch to the day_x_background
+- After user click the card with `ak_tag=="出园"`, enter success page, there should be animation connect these:
+    - The contents above day_x_background fade
+    - use a Cross dissolution effect to switch from the day_x_background to the success_page background
     - display the plan options
 - Notice that the frameworks must be universal, so without any hard code
 - json structure:

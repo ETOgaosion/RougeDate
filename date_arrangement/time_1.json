@@ -8,7 +8,8 @@
         {
             "day": 0,
             "date": "2026/2/23",
-            "debuf": "9点后下雨，需及时送小鱼回家",
+            "debuff": "雨",
+			"debuff_hint": "9点后下雨，需及时送小鱼回家",
             "plans": [
                 {
                     "column": 1,
@@ -144,7 +145,7 @@
                     "cards": [
                         {
                             "id": 6,
-                            "connect_from": [3],
+                            "connect_from": [3, 4, 5],
                             "time": "2026/2/23 20:10",
                             "activities": [
                                 {
@@ -184,7 +185,7 @@
 					"cards": [
 						{
 							"id": 8,
-							"connect_from": [6],
+							"connect_from": [6, 7],
 							"time": "2026/2/23 21:00",
 							"activities": [
 								{
