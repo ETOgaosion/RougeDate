@@ -132,6 +132,7 @@ export default function App() {
   const boardCanvasRef = useRef(null);
   const cardRefs = useRef({});
   const debuffTimerRef = useRef(null);
+  const topBarRef = useRef(null);
 
   const [selectedIndex, setSelectedIndex] = useState(latestIndex);
   const [activeTimeIndex, setActiveTimeIndex] = useState(latestIndex);
@@ -147,9 +148,13 @@ export default function App() {
   const [debuffHintOpen, setDebuffHintOpen] = useState(false);
   const [boardLayout, setBoardLayout] = useState({
     cardWidth: 220,
+    cardHeight: 82,
+    cardTagHeight: 24,
+    cardItemGap: 6,
     columnGap: 72,
     columnTrack: 300,
     chainGap: 26,
+    columnStackGap: 36,
   });
 
   const activeTime = timeline.detailByIndex[activeTimeIndex] ?? null;
@@ -323,29 +328,127 @@ export default function App() {
     }
 
     const viewportWidth = Math.max(320, boardElement.clientWidth);
+    const measuredBoardHeight = Math.max(180, boardElement.clientHeight);
+    const topBarHeight = Math.max(
+      0,
+      topBarRef.current?.getBoundingClientRect().height ?? 0,
+    );
+    const visualViewportHeight =
+      window.visualViewport?.height ?? window.innerHeight ?? measuredBoardHeight;
+    const viewportBoardHeight = Math.max(
+      120,
+      visualViewportHeight - topBarHeight - 28,
+    );
+    const availableHeight = Math.max(
+      120,
+      Math.min(measuredBoardHeight - 12, viewportBoardHeight),
+    );
+
     const unit = (viewportWidth * 0.9) / 3;
     const cardWidth = Math.max(196, Math.min(340, Math.round(unit * 0.56)));
     const columnGap = Math.max(52, Math.round(unit - cardWidth));
     const columnTrack = Math.max(cardWidth + 20, Math.round(unit + cardWidth * 0.1));
-    const chainGap = Math.max(14, Math.round(cardWidth * 0.1));
+
+    const widthDrivenCardHeight = Math.max(
+      42,
+      Math.min(112, Math.round(cardWidth * 0.38)),
+    );
+    const baseCardTagHeight = Math.max(
+      16,
+      Math.min(24, Math.round(widthDrivenCardHeight * 0.34)),
+    );
+    const baseCardItemGap = Math.max(
+      3,
+      Math.min(8, Math.round(widthDrivenCardHeight * 0.1)),
+    );
+    const baseChainGap = Math.max(8, Math.round(widthDrivenCardHeight * 0.2));
+    const baseColumnStackGap = Math.max(
+      12,
+      Math.round(widthDrivenCardHeight * 0.48),
+    );
+
+    let maxActivityCards = 1;
+    let maxInnerGaps = 0;
+    let maxChains = 1;
+    const columns = activeDay?.columns ?? [];
+    for (const column of columns) {
+      const cards = column.cards ?? [];
+      const chainCount = Math.max(1, cards.length);
+      let activityCards = 0;
+      let innerGaps = 0;
+      for (const card of cards) {
+        const count = Math.max(1, card.activities.length || 0);
+        activityCards += count;
+        innerGaps += Math.max(0, count - 1);
+      }
+      if (activityCards <= 0) {
+        activityCards = 1;
+      }
+      const currentDemand =
+        activityCards + innerGaps * 0.22 + Math.max(0, chainCount - 1) * 0.45;
+      const previousDemand =
+        maxActivityCards + maxInnerGaps * 0.22 + Math.max(0, maxChains - 1) * 0.45;
+      if (currentDemand > previousDemand) {
+        maxActivityCards = activityCards;
+        maxInnerGaps = innerGaps;
+        maxChains = chainCount;
+      }
+    }
+
+    const reservedGapHeight =
+      maxInnerGaps * baseChainGap + Math.max(0, maxChains - 1) * baseColumnStackGap;
+    const reservedLabelHeight =
+      maxActivityCards * (baseCardTagHeight + baseCardItemGap);
+    const fittedCardHeight = Math.floor(
+      (availableHeight - reservedGapHeight - reservedLabelHeight) /
+        Math.max(1, maxActivityCards),
+    );
+    const safeFittedCardHeight = Number.isFinite(fittedCardHeight)
+      ? fittedCardHeight
+      : widthDrivenCardHeight;
+    const cardHeight = Math.max(
+      24,
+      Math.min(widthDrivenCardHeight, safeFittedCardHeight),
+    );
+    const cardTagHeight = Math.max(
+      12,
+      Math.min(baseCardTagHeight, Math.round(cardHeight * 0.4)),
+    );
+    const cardItemGap = Math.max(
+      2,
+      Math.min(baseCardItemGap, Math.round(cardHeight * 0.12)),
+    );
+    const chainGap = Math.max(6, Math.min(baseChainGap, Math.round(cardHeight * 0.22)));
+    const columnStackGap = Math.max(
+      8,
+      Math.min(baseColumnStackGap, Math.round(cardHeight * 0.45)),
+    );
 
     setBoardLayout((previous) => {
       if (
         previous.cardWidth === cardWidth &&
+        previous.cardHeight === cardHeight &&
+        previous.cardTagHeight === cardTagHeight &&
+        previous.cardItemGap === cardItemGap &&
         previous.columnGap === columnGap &&
         previous.columnTrack === columnTrack &&
-        previous.chainGap === chainGap
+        previous.chainGap === chainGap &&
+        previous.columnStackGap === columnStackGap
       ) {
         return previous;
       }
       return {
         cardWidth,
+        cardHeight,
+        cardTagHeight,
+        cardItemGap,
         columnGap,
         columnTrack,
         chainGap,
+        columnStackGap,
       };
     });
-  }, []);
+  }, [activeDay]);
 
   const recalculateConnections = useCallback(() => {
     if (
@@ -754,7 +857,7 @@ export default function App() {
           : 0.14;
 
   return (
-    <main className="relative h-screen w-screen overflow-hidden text-slateMist">
+    <main className="app-root relative h-screen w-screen overflow-hidden text-slateMist">
       <img
         src={mainBackground}
         alt="Main background"
@@ -887,7 +990,7 @@ export default function App() {
         className="absolute inset-0 z-30 flex flex-col transition-opacity duration-300"
         style={{ opacity: rougeOpacity, pointerEvents: rougeEvents }}
       >
-        <header className="rouge-topbar">
+        <header ref={topBarRef} className="rouge-topbar">
           <div className="rouge-topbar-section">
             <span>
               {VIEWER_LABEL}
@@ -935,9 +1038,13 @@ export default function App() {
             onScroll={recalculateConnections}
             style={{
               "--card-width": `${boardLayout.cardWidth}px`,
+              "--card-height": `${boardLayout.cardHeight}px`,
+              "--card-tag-height": `${boardLayout.cardTagHeight}px`,
+              "--card-item-gap": `${boardLayout.cardItemGap}px`,
               "--column-gap": `${boardLayout.columnGap}px`,
               "--column-track": `${boardLayout.columnTrack}px`,
               "--chain-gap": `${boardLayout.chainGap}px`,
+              "--column-stack-gap": `${boardLayout.columnStackGap}px`,
             }}
           >
             <div
