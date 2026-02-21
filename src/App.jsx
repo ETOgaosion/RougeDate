@@ -7,6 +7,7 @@
   useState,
 } from "react";
 import mainBackground from "../assets/images/main_background_heng.png";
+import successBackground from "../assets/images/success_page.png";
 import checkCircleIcon from "../assets/icons/check_circle.svg";
 import battleIcon from "../assets/icons/battle.svg";
 import bossIcon from "../assets/icons/boss.svg";
@@ -27,6 +28,8 @@ const START_ACTION_LABEL = "\u524d\u5f80\u51fa\u53d1";
 const RESET_LABEL = "\u91cd\u7f6e";
 const RESET_CONFIRM_TEXT =
   "\u5c06\u6e05\u7a7a\u6240\u6709\u5df2\u9009\u5361\u7247\u5e76\u8fd4\u56de\u9875\u9762\u8d77\u70b9\uff0c\u786e\u8ba4\u5417\uff1f";
+const DOCTOR_LABEL = "Dr.";
+const VISITOR_LIST_LABEL = "\u6e38\u89c8\u8005\u540d\u5355";
 const UP_MARK = "\u25b2";
 const DOWN_MARK = "\u25bc";
 
@@ -35,6 +38,12 @@ const PHASE_FADE = "fade-content";
 const PHASE_BRIGHT = "bright-main";
 const PHASE_CROSS = "cross-dissolve";
 const PHASE_ROUGE = "rouge";
+const PHASE_SUCCESS_FADE = "success-fade-content";
+const PHASE_SUCCESS_CROSS = "success-cross-dissolve";
+const PHASE_SUCCESS = "success";
+const EXIT_AK_TAG = "\u51fa\u56ed";
+const EXIT_AK_TAG_FALLBACK = "鍑哄洯";
+const EXIT_TAG_SET = new Set([EXIT_AK_TAG, EXIT_AK_TAG_FALLBACK]);
 
 const iconByKey = {
   battle: battleIcon,
@@ -64,6 +73,24 @@ function getCardColor(card) {
 
 function normalizeTag(tag) {
   return typeof tag === "string" ? tag.trim() : "";
+}
+
+function buildSelectionKey(timeIndex, dayPosition) {
+  return `${timeIndex}-${dayPosition}`;
+}
+
+function isExitTag(tag) {
+  return EXIT_TAG_SET.has(normalizeTag(tag));
+}
+
+function isExitCard(card) {
+  if (!card) {
+    return false;
+  }
+  if (card.akTags.some((tag) => isExitTag(tag))) {
+    return true;
+  }
+  return card.activities.some((activity) => isExitTag(activity.akTag));
 }
 
 function getTagColor(tag) {
@@ -113,7 +140,7 @@ export default function App() {
   const [centerSpacer, setCenterSpacer] = useState(0);
   const [canScrollUp, setCanScrollUp] = useState(false);
   const [canScrollDown, setCanScrollDown] = useState(false);
-  const [selectedByColumn, setSelectedByColumn] = useState({});
+  const [chosenCardsByDay, setChosenCardsByDay] = useState({});
   const [detailCardKey, setDetailCardKey] = useState("");
   const [detailActivityIndex, setDetailActivityIndex] = useState(0);
   const [connections, setConnections] = useState([]);
@@ -143,6 +170,39 @@ export default function App() {
     resolvedDayPosition,
     mainBackground,
   );
+  const activeDaySelectionKey = buildSelectionKey(
+    activeTimeIndex,
+    resolvedDayPosition,
+  );
+  const selectedByColumn = useMemo(
+    () => chosenCardsByDay[activeDaySelectionKey] ?? {},
+    [activeDaySelectionKey, chosenCardsByDay],
+  );
+  const mateText = activeTime?.withPerson || "-";
+
+  const chosenCardTitles = useMemo(() => {
+    if (!activeTime) {
+      return [];
+    }
+
+    const titles = [];
+    activeTime.days.forEach((day, dayPosition) => {
+      const selectionKey = buildSelectionKey(activeTimeIndex, dayPosition);
+      const selections = chosenCardsByDay[selectionKey] ?? {};
+      day.columns.forEach((column) => {
+        const cardKey = selections[String(column.columnIndex)];
+        if (!cardKey) {
+          return;
+        }
+        const card = day.cardByKey[cardKey];
+        if (card?.title) {
+          titles.push(card.title);
+        }
+      });
+    });
+
+    return titles;
+  }, [activeTime, activeTimeIndex, chosenCardsByDay]);
 
   const columnStates = useMemo(() => {
     if (!activeDay) {
@@ -413,7 +473,7 @@ export default function App() {
       }
       setActiveTimeIndex(index);
       setActiveDayPosition(0);
-      setSelectedByColumn({});
+      setChosenCardsByDay({});
       setDetailCardKey("");
       setDetailActivityIndex(0);
       setPhase(PHASE_FADE);
@@ -432,19 +492,49 @@ export default function App() {
         String(column.columnIndex),
       );
 
-      setSelectedByColumn((previous) => {
-        const next = { ...previous, [columnKey]: card.key };
+      setChosenCardsByDay((previous) => {
+        const daySelections = { ...(previous[activeDaySelectionKey] ?? {}) };
+        daySelections[columnKey] = card.key;
         const currentIndex = orderedKeys.indexOf(columnKey);
         for (let pos = currentIndex + 1; pos < orderedKeys.length; pos += 1) {
-          delete next[orderedKeys[pos]];
+          delete daySelections[orderedKeys[pos]];
         }
-        return next;
+        return {
+          ...previous,
+          [activeDaySelectionKey]: daySelections,
+        };
       });
 
       setDetailCardKey(card.key);
       setDetailActivityIndex(0);
+
+      if (!isExitCard(card)) {
+        return;
+      }
+
+      const hasNextDay = resolvedDayPosition < activeDays.length - 1;
+      if (hasNextDay) {
+        setActiveDayPosition((previous) =>
+          Math.min(previous + 1, activeDays.length - 1),
+        );
+        setDetailCardKey("");
+        setDetailActivityIndex(0);
+        setDebuffHintOpen(false);
+        const boardElement = boardRef.current;
+        if (boardElement) {
+          boardElement.scrollTo({
+            left: 0,
+            top: 0,
+            behavior: "smooth",
+          });
+        }
+        return;
+      }
+
+      setDebuffHintOpen(false);
+      setPhase(PHASE_SUCCESS_FADE);
     },
-    [activeDay],
+    [activeDay, activeDaySelectionKey, activeDays.length, resolvedDayPosition],
   );
 
   useEffect(() => {
@@ -453,7 +543,7 @@ export default function App() {
   }, [latestIndex]);
 
   useEffect(() => {
-    if (phase === PHASE_ENTRY || phase === PHASE_ROUGE) {
+    if (phase === PHASE_ENTRY || phase === PHASE_ROUGE || phase === PHASE_SUCCESS) {
       return undefined;
     }
 
@@ -468,6 +558,12 @@ export default function App() {
     } else if (phase === PHASE_CROSS) {
       timeoutMs = 640;
       nextPhase = PHASE_ROUGE;
+    } else if (phase === PHASE_SUCCESS_FADE) {
+      timeoutMs = 320;
+      nextPhase = PHASE_SUCCESS_CROSS;
+    } else if (phase === PHASE_SUCCESS_CROSS) {
+      timeoutMs = 680;
+      nextPhase = PHASE_SUCCESS;
     }
 
     const timer = window.setTimeout(() => setPhase(nextPhase), timeoutMs);
@@ -520,7 +616,6 @@ export default function App() {
   }, [detailCardKey, revealByCardKey]);
 
   useEffect(() => {
-    setSelectedByColumn({});
     setDetailCardKey("");
     setDetailActivityIndex(0);
   }, [activeDayPosition, activeTimeIndex]);
@@ -560,11 +655,12 @@ export default function App() {
       return;
     }
 
-    setSelectedByColumn({});
+    setChosenCardsByDay({});
     setDetailCardKey("");
     setDetailActivityIndex(0);
     setActiveDayPosition(0);
     setDebuffHintOpen(false);
+    setPhase(PHASE_ROUGE);
 
     const boardElement = boardRef.current;
     if (boardElement) {
@@ -636,10 +732,26 @@ export default function App() {
   const entryEvents = phase === PHASE_ENTRY ? "auto" : "none";
   const rougeOpacity = phase === PHASE_ROUGE ? 1 : 0;
   const rougeEvents = phase === PHASE_ROUGE ? "auto" : "none";
-  const mainOpacity = phase === PHASE_CROSS || phase === PHASE_ROUGE ? 0 : 1;
-  const dayOpacity = phase === PHASE_CROSS || phase === PHASE_ROUGE ? 1 : 0;
+  const successOpacity = phase === PHASE_SUCCESS ? 1 : 0;
+  const successEvents = phase === PHASE_SUCCESS ? "auto" : "none";
+  const mainOpacity =
+    phase === PHASE_ENTRY || phase === PHASE_FADE || phase === PHASE_BRIGHT ? 1 : 0;
+  const dayOpacity =
+    phase === PHASE_CROSS ||
+    phase === PHASE_ROUGE ||
+    phase === PHASE_SUCCESS_FADE
+      ? 1
+      : 0;
+  const successBackgroundOpacity =
+    phase === PHASE_SUCCESS_CROSS || phase === PHASE_SUCCESS ? 1 : 0;
   const shadowOpacity =
-    phase === PHASE_ENTRY ? 0.58 : phase === PHASE_FADE ? 0.32 : 0.14;
+    phase === PHASE_ENTRY
+      ? 0.58
+      : phase === PHASE_FADE
+        ? 0.32
+        : phase === PHASE_SUCCESS_CROSS || phase === PHASE_SUCCESS
+          ? 0.36
+          : 0.14;
 
   return (
     <main className="relative h-screen w-screen overflow-hidden text-slateMist">
@@ -654,6 +766,12 @@ export default function App() {
         alt="Day background"
         className="absolute inset-0 h-full w-full object-cover transition-opacity duration-[680ms]"
         style={{ opacity: dayOpacity }}
+      />
+      <img
+        src={successBackground}
+        alt="Success background"
+        className="absolute inset-0 h-full w-full object-cover transition-opacity duration-[680ms]"
+        style={{ opacity: successBackgroundOpacity }}
       />
       <div
         className="absolute inset-0 bg-black transition-opacity duration-300"
@@ -1056,6 +1174,37 @@ export default function App() {
           >
             {RESET_LABEL}
           </button>
+        </div>
+      </section>
+
+      <section
+        className="absolute inset-0 z-40 flex transition-opacity duration-300"
+        style={{ opacity: successOpacity, pointerEvents: successEvents }}
+      >
+        <div className="success-page-shell">
+          <header className="success-page-top">
+            {DOCTOR_LABEL} {viewerName || "-"}
+          </header>
+
+          <div className="success-page-middle">
+            <h2 className="success-page-visitor-title">{VISITOR_LIST_LABEL}</h2>
+            <p className="success-page-mate">{mateText}</p>
+          </div>
+
+          <div className="success-page-list-wrap">
+            {chosenCardTitles.length === 0 && (
+              <p className="success-page-empty">-</p>
+            )}
+            {chosenCardTitles.length > 0 && (
+              <ul className="success-page-list">
+                {chosenCardTitles.map((title, titleIndex) => (
+                  <li key={`${title}-${titleIndex}`} className="success-page-item">
+                    {title}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       </section>
     </main>
