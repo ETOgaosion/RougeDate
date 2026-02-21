@@ -24,6 +24,9 @@ const LEFT_LABEL = "\u8bf7\u541b\u8fdb\u5165";
 const VIEWER_LABEL = "\u6e38\u5ba2";
 const ENTER_EXPLORE_LABEL = "\u8fdb\u5165\u63a2\u7d22";
 const START_ACTION_LABEL = "\u524d\u5f80\u51fa\u53d1";
+const RESET_LABEL = "\u91cd\u7f6e";
+const RESET_CONFIRM_TEXT =
+  "\u5c06\u6e05\u7a7a\u6240\u6709\u5df2\u9009\u5361\u7247\u5e76\u8fd4\u56de\u9875\u9762\u8d77\u70b9\uff0c\u786e\u8ba4\u5417\uff1f";
 const UP_MARK = "\u25b2";
 const DOWN_MARK = "\u25bc";
 
@@ -551,6 +554,28 @@ export default function App() {
     setDebuffHintOpen(false);
   }, []);
 
+  const resetRougeBoard = useCallback(() => {
+    const confirmed = window.confirm(RESET_CONFIRM_TEXT);
+    if (!confirmed) {
+      return;
+    }
+
+    setSelectedByColumn({});
+    setDetailCardKey("");
+    setDetailActivityIndex(0);
+    setActiveDayPosition(0);
+    setDebuffHintOpen(false);
+
+    const boardElement = boardRef.current;
+    if (boardElement) {
+      boardElement.scrollTo({
+        left: 0,
+        top: 0,
+        behavior: "smooth",
+      });
+    }
+  }, []);
+
   const showDebuffHintTemporarily = useCallback(() => {
     if (debuffTimerRef.current) {
       window.clearTimeout(debuffTimerRef.current);
@@ -1022,6 +1047,16 @@ export default function App() {
             )}
           </div>
         </aside>
+
+        <div className="rouge-reset-wrap">
+          <button
+            type="button"
+            className="rouge-reset-btn"
+            onClick={resetRougeBoard}
+          >
+            {RESET_LABEL}
+          </button>
+        </div>
       </section>
     </main>
   );
