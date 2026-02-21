@@ -1,0 +1,94 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #030303;
+  color: #f2f2f2;
+  font-family: "Consolas", "Courier New", monospace;
+}
+
+.left-title {
+  font-family: "KaiTi", "STKaiti", "Times New Roman", serif;
+}
+
+.line-number {
+  font-family: "Palatino Linotype", "Times New Roman", serif;
+}
+
+.line-city {
+  font-family: "Trebuchet MS", "Lucida Sans Unicode", sans-serif;
+}
+
+@keyframes darkenIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 0.74;
+  }
+}
+
+@keyframes riseIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.bg-darken {
+  animation: darkenIn 1.1s ease 0.8s forwards;
+}
+
+.content-reveal {
+  opacity: 0;
+  animation: riseIn 0.85s ease 1.5s forwards;
+}
+
+.timeline-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.timeline-scroll::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.timeline-scroll::-webkit-scrollbar-thumb {
+  background: rgba(90, 255, 231, 0.86);
+  border-radius: 9999px;
+}
+
+.concentric-circle {
+  width: min(72vh, 620px);
+  aspect-ratio: 1;
+  border-radius: 9999px;
+  opacity: 0.78;
+  filter: blur(14px);
+  box-shadow:
+    0 0 42px rgba(186, 87, 136, 0.28),
+    0 0 66px rgba(42, 143, 103, 0.2),
+    0 0 94px rgba(155, 52, 64, 0.22);
+  background: radial-gradient(
+    circle,
+    rgba(183, 82, 134, 0.74) 0%,
+    rgba(183, 82, 134, 0.68) 34%,
+    rgba(110, 135, 113, 0.66) 40%,
+    rgba(40, 140, 100, 0.6) 56%,
+    rgba(92, 112, 78, 0.54) 62%,
+    rgba(150, 50, 62, 0.52) 68%,
+    rgba(150, 50, 62, 0.46) 78%,
+    rgba(150, 50, 62, 0.28) 88%,
+    rgba(150, 50, 62, 0) 96%
+  );
+}

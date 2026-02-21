@@ -1,0 +1,207 @@
+{
+    "city": "扬州",
+    "province": "江苏",
+    "country": "中国",
+    "duration": "2026/2/23~2026/2/23",
+    "mate": "鼠片（小鱼） & 蓝海（源儿）",
+    "arrangement": [
+        {
+            "day": 0,
+            "date": "2026/2/23",
+            "debuf": "9点后下雨，需及时送小鱼回家",
+            "plans": [
+                {
+                    "column": 1,
+                    "cards": [
+                        {
+                            "id": 0,
+                            "time": "2026/2/23 15:00",
+                            "activities": [
+                                {
+                                    "tags": ["休闲", "吃喝"],
+                                    "ak_tag": "得偿所愿",
+                                    "activity": "奶茶",
+                                    "location": "茶理宜世",
+                                    "geography": "扬州三盛国际广场",
+                                    "duration": "10分钟",
+                                    "recommendation_stars": 4.0,
+                                    "notes": "查理一世哈哈，想喝试试"
+                                },
+                                {
+                                    "tags": ["手工活动"],
+                                    "ak_tag": "兴致盎然",
+                                    "activity": "拼豆",
+                                    "location": "一五八手作",
+                                    "geography": "扬州三盛国际广场",
+                                    "duration": "60~90分钟",
+                                    "booked": true,
+                                    "recommendation_stars": 4.5,
+                                    "notes": "源超级想做蒂蒂，想学习鱼的手工技能，记得拼豆转化网站",
+                                    "links": [
+                                        {
+                                            "name": "拼豆转换网站",
+                                            "url": "https://perlerbeads.zippland.com/"
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "id": 1,
+                            "time": "2026/2/23 15:00",
+                            "activities": [
+                                {
+                                    "tags": ["休闲", "吃喝"],
+                                    "ak_tag": "安全的角落",
+                                    "activity": "茶",
+                                    "location": "松石间意",
+                                    "geography": "东关街",
+                                    "duration": "60分钟",
+                                    "recommendation_stars": 4.0,
+                                    "notes": "非常有古意的一间店"
+                                }
+                            ]
+                        },
+                        {
+                            "id": 2,
+                            "time": "2026/2/23 15:00",
+                            "activities": [
+                                {
+                                    "tags": ["休闲", "吃喝"],
+                                    "ak_tag": "安全的角落",
+                                    "activity": "下午茶",
+                                    "location": "PICAPICA喜鹊",
+                                    "geography": "扬州大运河博物馆",
+                                    "duration": "120分钟",
+                                    "recommendation_stars": 3.5,
+                                    "notes": "漂亮出片，古意",
+                                    "negatives": "周边小鱼去过了"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "column": 2,
+                    "cards": [
+                        {
+                            "id": 3,
+                            "connect_from": [0, 1, 2],
+                            "time": "2026/2/23 18:00",
+                            "activities": [
+                                {
+                                    "tags": ["吃喝"],
+                                    "ak_tag": "险路恶敌",
+                                    "activity": "晚饭：赏景日料自助",
+                                    "location": "虹料理（京华国际大酒店）",
+                                    "geography": "万象汇斜对角",
+                                    "duration": "120分钟",
+                                    "recommendation_stars": 4.0,
+                                    "notes": "风景很好，可以吃日料，吃完可以去再万象汇逛一逛"
+                                }
+                            ]
+                        },
+                        {
+                            "id": 4,
+                            "connect_from": [0, 1, 2],
+                            "time": "2026/2/23 18:00",
+                            "activities": [
+                                {
+                                    "tags": ["吃喝"],
+                                    "ak_tag": "作战",
+                                    "activity": "晚饭：串烧",
+                                    "location": "小柴獭串烧",
+                                    "geography": "明月湖旁边",
+                                    "duration": "120分钟",
+                                    "recommendation_stars": 3.5,
+                                    "notes": "下雨可以直接回家",
+                                    "negatives": "离小鱼家太近，less sense of freshness"
+                                }
+                            ]
+                        },
+                        {
+                            "id": 5,
+                            "connect_from": [0, 1, 2],
+                            "time": "2026/2/23 18:00",
+                            "activities": [
+                                {
+                                    "tags": ["吃喝"],
+                                    "ak_tag": "紧急作战",
+                                    "activity": "晚饭：韩餐",
+                                    "location": "kcooking概念韩餐",
+                                    "geography": "京华城",
+                                    "duration": "120分钟",
+                                    "recommendation_stars": 3.5,
+                                    "notes": "下雨可以直接回家，漂亮饭，看上去还蛮有食欲",
+                                    "negatives": "离小鱼家太近，less sense of freshness"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "column": 3,
+                    "cards": [
+                        {
+                            "id": 6,
+                            "connect_from": [3],
+                            "time": "2026/2/23 20:10",
+                            "activities": [
+                                {
+                                    "tags": ["逛商场"],
+                                    "ak_tag": "诡意行商",
+                                    "activity": "逛万象汇",
+                                    "location": "万象汇",
+                                    "geography": "万象汇",
+                                    "duration": "30分钟",
+                                    "recommendation_stars": 4.0,
+                                    "notes": "吃完消消食，二次元启动一下"
+                                }
+                            ]
+						},
+						{
+							"id": 7,
+							"connect_from": [4, 5],
+							"time": "2026/2/23 20:10",
+							"activities": [
+								{
+									"tags": ["逛街", "散步", "休息"],
+									"ak_tag": "不期而遇",
+									"activity": "在明月湖逛逛",
+									"location": "明月湖",
+									"geography": "明月湖",
+									"duration": "30分钟",
+									"recommendation_stars": 5.0,
+									"notes": "也可以坐坐，享受湖边的宁静",
+									"negatives": "小鱼可能逛过太多次了"
+								}
+							]
+						}
+					]
+                },
+				{
+					"column": 4,
+					"cards": [
+						{
+							"id": 8,
+							"connect_from": [6],
+							"time": "2026/2/23 21:00",
+							"activities": [
+								{
+									"tags": ["回家"],
+									"ak_tag": "出园",
+									"activity": "回家",
+									"location": "家",
+									"geography": "家",
+									"duration": "0分钟",
+									"recommendation_stars": 4.0,
+									"notes": "结束最幸福的一天"
+								}
+							]
+						}
+					]
+				}
+            ]
+        }
+    ]
+}
