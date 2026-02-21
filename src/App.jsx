@@ -12,6 +12,7 @@ import checkCircleIcon from "../assets/icons/check_circle.svg";
 import battleIcon from "../assets/icons/battle.svg";
 import bossIcon from "../assets/icons/boss.svg";
 import boxIcon from "../assets/icons/box.svg";
+import coinIcon from "../assets/icons/coin.svg";
 import dialogIcon from "../assets/icons/dialog.svg";
 import diceIcon from "../assets/icons/dice.svg";
 import exitIcon from "../assets/icons/exit.svg";
@@ -51,6 +52,7 @@ const iconByKey = {
   battle: battleIcon,
   boss: bossIcon,
   box: boxIcon,
+  coin: coinIcon,
   dialog: dialogIcon,
   dice: diceIcon,
   exit: exitIcon,
@@ -152,6 +154,9 @@ export default function App() {
   });
   const detailTouchDragRef = useRef({
     active: false,
+    axis: "y",
+    sign: 1,
+    startX: 0,
     startY: 0,
     startScrollTop: 0,
   });
@@ -695,17 +700,43 @@ export default function App() {
         stopDetailTouchDrag();
         return;
       }
-      if (
-        !window.matchMedia("(max-width: 1024px) and (orientation: portrait)")
-          .matches
-      ) {
+      const portraitQuery = window.matchMedia(
+        "(max-width: 1024px) and (orientation: portrait)",
+      );
+      const landscapeQuery = window.matchMedia(
+        "(max-width: 1024px) and (orientation: landscape)",
+      );
+      if (!portraitQuery.matches && !landscapeQuery.matches) {
         stopDetailTouchDrag();
         return;
       }
 
+      const resolveLandscapeSign = () => {
+        const orientation = window.screen?.orientation;
+        const type = orientation?.type ?? "";
+        if (type.includes("landscape-primary")) {
+          return 1;
+        }
+        if (type.includes("landscape-secondary")) {
+          return -1;
+        }
+
+        const rawAngle = orientation?.angle ?? window.orientation ?? 0;
+        if (rawAngle === 270 || rawAngle === -270) {
+          return -1;
+        }
+        if (rawAngle === -90 || rawAngle === 90) {
+          return 1;
+        }
+        return 1;
+      };
+
       const touch = event.touches[0];
       detailTouchDragRef.current = {
         active: true,
+        axis: landscapeQuery.matches ? "x" : "y",
+        sign: landscapeQuery.matches ? resolveLandscapeSign() : 1,
+        startX: touch.clientX,
         startY: touch.clientY,
         startScrollTop: detailElement.scrollTop,
       };
@@ -721,12 +752,15 @@ export default function App() {
     }
 
     const touch = event.touches[0];
+    const deltaX = touch.clientX - dragState.startX;
     const deltaY = touch.clientY - dragState.startY;
-    if (Math.abs(deltaY) < 3) {
+    const primaryDelta =
+      (dragState.axis === "x" ? deltaX : deltaY) * dragState.sign;
+    if (Math.abs(primaryDelta) < 3) {
       return;
     }
 
-    const nextScrollTop = dragState.startScrollTop + deltaY;
+    const nextScrollTop = dragState.startScrollTop + primaryDelta;
     const maxScrollTop = Math.max(
       0,
       detailElement.scrollHeight - detailElement.clientHeight,
@@ -1617,7 +1651,7 @@ export default function App() {
                                     className={`rouge-card rouge-activity-card ${isChosen ? "rouge-card-chosen" : ""} ${locked ? "rouge-card-locked" : ""} ${focused ? "rouge-card-focused" : ""} ${revealed ? "" : "rouge-card-placeholder"}`}
                                     style={{
                                       "--rouge-card-color": activityColor,
-                                      "--rouge-card-bg": withAlpha(activityColor, 0.62),
+                                      "--rouge-card-bg": withAlpha(activityColor, 0.82),
                                       "--rouge-card-border": withAlpha(activityColor, 0.98),
                                     }}
                                     onClick={() => {

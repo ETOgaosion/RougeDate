@@ -34,8 +34,7 @@ body {
   background-image: var(--rouge-cursor-image);
   background-size: contain;
   background-repeat: no-repeat;
-  transform-origin: var(--rouge-cursor-hotspot-x, 8px)
-    var(--rouge-cursor-hotspot-y, 8px);
+  transform-origin: 100% 100%;
   will-change: transform;
 }
 
@@ -48,7 +47,7 @@ body {
     transform: rotate(0deg);
   }
   45% {
-    transform: rotate(16deg);
+    transform: rotate(-16deg);
   }
   100% {
     transform: rotate(0deg);
@@ -376,7 +375,7 @@ body {
       rgba(255, 255, 255, 0.12) 0%,
       rgba(255, 255, 255, 0) 40%
     ),
-    rgb(16, 22, 28);
+    rgb(28, 36, 44);
   color: rgba(246, 249, 252, 0.95);
   margin-bottom: 0;
   padding: 0.46rem 0.56rem;
