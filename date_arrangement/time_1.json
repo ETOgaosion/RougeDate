@@ -92,13 +92,15 @@
                             "activities": [
                                 {
                                     "tags": ["吃喝"],
-                                    "ak_tag": "险路恶敌",
-                                    "activity": "晚饭：赏景日料自助",
-                                    "location": "虹料理（京华国际大酒店）",
-                                    "geography": "万象汇斜对角",
+                                    "ak_tag": "作战",
+                                    "activity": "晚饭：扬州院子",
+                                    "location": "大运河博物馆",
+                                    "geography": "大运河博物馆",
                                     "duration": "120分钟",
                                     "recommendation_stars": 4.0,
-                                    "notes": "风景很好，可以吃日料，吃完可以去再万象汇逛一逛"
+                                    "booked": false,
+                                    "notes": "看起来比较平价，很合适，有好吃的螃蟹",
+                                    "negatives": "没法定，需要提前取号排队"
                                 }
                             ]
                         },
@@ -109,14 +111,13 @@
                             "activities": [
                                 {
                                     "tags": ["吃喝"],
-                                    "ak_tag": "作战",
-                                    "activity": "晚饭：串烧",
-                                    "location": "小柴獭串烧",
-                                    "geography": "明月湖旁边",
+                                    "ak_tag": "紧急作战",
+                                    "activity": "晚饭：最精致的重庆火锅",
+                                    "location": "BENJIE 笨姐老重庆火锅",
+                                    "geography": "邗江区万达广场",
                                     "duration": "120分钟",
-                                    "recommendation_stars": 3.5,
-                                    "notes": "下雨可以直接回家",
-                                    "negatives": "离小鱼家太近，less sense of freshness"
+                                    "recommendation_stars": 4.0,
+                                    "notes": "有精致小饮品的重庆火锅可不多见"
                                 }
                             ]
                         },
@@ -144,8 +145,25 @@
                     "column": 3,
                     "cards": [
                         {
+                            "id": 5,
+                            "connect_from": [3],
+                            "time": "2026/2/23 20:00",
+                            "activities": [
+                                {
+                                    "tags": ["休闲", "吃喝"],
+                                    "ak_tag": "得偿所愿",
+                                    "activity": "香香软软小蛋糕",
+                                    "location": "有甜Cake",
+                                    "geography": "邗江万达店",
+                                    "duration": "30分钟",
+                                    "recommendation_stars": 4.0,
+                                    "notes": "有Jellycat，可爱好吃"
+                                }
+                            ]
+                        },
+                        {
                             "id": 6,
-                            "connect_from": [3, 4, 5],
+                            "connect_from": [3, 5],
                             "time": "2026/2/23 20:10",
                             "activities": [
                                 {
@@ -162,7 +180,7 @@
 						},
 						{
 							"id": 7,
-							"connect_from": [4, 5],
+							"connect_from": [5],
 							"time": "2026/2/23 20:10",
 							"activities": [
 								{
