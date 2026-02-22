@@ -450,14 +450,15 @@ body {
 
 .rouge-card-tag-stripe {
   width: var(--card-width, 220px);
-  min-height: var(--card-tag-height, 24px);
+  height: var(--card-tag-height, 24px);
+  box-sizing: border-box;
   border: 1px solid rgba(255, 255, 255, 0.28);
   border-radius: 4px;
   background: var(--rouge-card-color);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0.2rem 0.5rem;
+  padding: 0 0.5rem;
 }
 
 .rouge-card-tag-stripe-placeholder {
@@ -472,10 +473,10 @@ body {
 .rouge-card-tag-text {
   color: rgba(247, 252, 255, 0.95);
   display: block;
-  font-size: 0.9rem;
+  font-size: clamp(10px, calc(var(--card-tag-height, 24px) * 0.52), 18px);
   font-weight: 700;
   letter-spacing: 0.03em;
-  line-height: 1.1;
+  line-height: 1;
   text-align: center;
   white-space: nowrap;
 }

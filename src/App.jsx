@@ -495,10 +495,7 @@ export default function App() {
       minCardHeight,
       Math.min(maxCardHeight, heightDrivenCardHeight),
     );
-    const baseCardTagHeight = Math.max(
-      16,
-      Math.min(24, Math.round(desiredCardHeight * 0.34)),
-    );
+    const baseCardTagHeight = Math.round(desiredCardHeight * 0.5);
     const baseCardItemGap = Math.max(
       3,
       Math.min(8, Math.round(desiredCardHeight * 0.1)),
@@ -524,13 +521,10 @@ export default function App() {
       minCardHeight,
       Math.min(desiredCardHeight, safeFittedCardHeight),
     );
-    const cardWidth = Math.round(cardHeight * 4);
+    const cardWidth = Math.round(cardHeight * 3.5);
     const columnGap = Math.max(52, Math.round(unit - cardWidth));
     const columnTrack = Math.max(cardWidth + 20, Math.round(unit + cardWidth * 0.1));
-    const cardTagHeight = Math.max(
-      12,
-      Math.min(baseCardTagHeight, Math.round(cardHeight * 0.4)),
-    );
+    const cardTagHeight = Math.round(cardHeight * 0.5);
     const cardItemGap = Math.max(
       2,
       Math.min(baseCardItemGap, Math.round(cardHeight * 0.12)),
