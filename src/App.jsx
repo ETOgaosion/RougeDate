@@ -181,6 +181,8 @@ export default function App() {
   const [debuffHintOpen, setDebuffHintOpen] = useState(false);
   const [isBoardMouseDragging, setIsBoardMouseDragging] = useState(false);
   const [isDetailMouseDragging, setIsDetailMouseDragging] = useState(false);
+  const [entryShadowReady, setEntryShadowReady] = useState(false);
+  const entryShadowTimerRef = useRef(null);
 
   const updateDetailLayout = useCallback(() => {
     if (typeof window === "undefined") {
@@ -1119,6 +1121,26 @@ export default function App() {
   }, [latestIndex]);
 
   useEffect(() => {
+    if (entryShadowReady) {
+      return undefined;
+    }
+    if (entryShadowTimerRef.current) {
+      window.clearTimeout(entryShadowTimerRef.current);
+    }
+    entryShadowTimerRef.current = window.setTimeout(() => {
+      setEntryShadowReady(true);
+      entryShadowTimerRef.current = null;
+    }, 420);
+
+    return () => {
+      if (entryShadowTimerRef.current) {
+        window.clearTimeout(entryShadowTimerRef.current);
+        entryShadowTimerRef.current = null;
+      }
+    };
+  }, [entryShadowReady]);
+
+  useEffect(() => {
     if (phase === PHASE_ENTRY || phase === PHASE_ROUGE || phase === PHASE_SUCCESS) {
       return undefined;
     }
@@ -1348,12 +1370,29 @@ export default function App() {
     };
   }, [phase, recalculateConnections]);
 
-  const entryOpacity = phase === PHASE_ENTRY ? 1 : 0;
-  const entryEvents = phase === PHASE_ENTRY ? "auto" : "none";
-  const rougeOpacity = phase === PHASE_ROUGE ? 1 : 0;
-  const rougeEvents = phase === PHASE_ROUGE ? "auto" : "none";
-  const successOpacity = phase === PHASE_SUCCESS ? 1 : 0;
-  const successEvents = phase === PHASE_SUCCESS ? "auto" : "none";
+  const entryActive = phase === PHASE_ENTRY;
+  const rougeActive = phase === PHASE_ROUGE;
+  const successActive = phase === PHASE_SUCCESS;
+
+  const entryOpacity = entryActive ? 1 : 0;
+  const rougeOpacity = rougeActive ? 1 : 0;
+  const successOpacity = successActive ? 1 : 0;
+
+  const entryLayerStyle = {
+    opacity: entryOpacity,
+    pointerEvents: entryActive ? "auto" : "none",
+    zIndex: entryActive ? 50 : 20,
+  };
+  const rougeLayerStyle = {
+    opacity: rougeOpacity,
+    pointerEvents: rougeActive ? "auto" : "none",
+    zIndex: rougeActive ? 50 : 30,
+  };
+  const successLayerStyle = {
+    opacity: successOpacity,
+    pointerEvents: successActive ? "auto" : "none",
+    zIndex: successActive ? 50 : 40,
+  };
   const mainOpacity =
     phase === PHASE_ENTRY || phase === PHASE_FADE || phase === PHASE_BRIGHT ? 1 : 0;
   const dayOpacity =
@@ -1366,7 +1405,9 @@ export default function App() {
     phase === PHASE_SUCCESS_CROSS || phase === PHASE_SUCCESS ? 1 : 0;
   const shadowOpacity =
     phase === PHASE_ENTRY
-      ? 0.58
+      ? entryShadowReady
+        ? 0.58
+        : 0
       : phase === PHASE_FADE
         ? 0.32
         : phase === PHASE_SUCCESS_CROSS || phase === PHASE_SUCCESS
@@ -1400,7 +1441,9 @@ export default function App() {
 
       <section
         className="absolute inset-0 z-20 flex flex-col transition-opacity duration-300"
-        style={{ opacity: entryOpacity, pointerEvents: entryEvents }}
+        style={entryLayerStyle}
+        aria-hidden={!entryActive}
+        inert={entryActive ? undefined : ""}
       >
         <div className="left-title flex h-24 items-center justify-center px-4 text-center text-3xl tracking-[0.1em] text-white sm:h-28 sm:text-4xl">
           {VIEWER_LABEL}
@@ -1505,7 +1548,9 @@ export default function App() {
 
       <section
         className="absolute inset-0 z-30 flex flex-col transition-opacity duration-300"
-        style={{ opacity: rougeOpacity, pointerEvents: rougeEvents }}
+        style={rougeLayerStyle}
+        aria-hidden={!rougeActive}
+        inert={rougeActive ? undefined : ""}
       >
         <header ref={topBarRef} className="rouge-topbar">
           <div className="rouge-topbar-section">
@@ -1821,7 +1866,9 @@ export default function App() {
 
       <section
         className="absolute inset-0 z-40 flex transition-opacity duration-300"
-        style={{ opacity: successOpacity, pointerEvents: successEvents }}
+        style={successLayerStyle}
+        aria-hidden={!successActive}
+        inert={successActive ? undefined : ""}
       >
         <div className="success-page-shell">
           <header className="success-page-top">
