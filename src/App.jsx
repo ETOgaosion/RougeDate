@@ -1261,7 +1261,12 @@ export default function App() {
   }, [entryShadowReady]);
 
   useEffect(() => {
-    if (phase === PHASE_ENTRY || phase === PHASE_ROUGE || phase === PHASE_SUCCESS) {
+    if (
+      phase === PHASE_ENTRY ||
+      phase === PHASE_BRIGHT ||
+      phase === PHASE_ROUGE ||
+      phase === PHASE_SUCCESS
+    ) {
       return undefined;
     }
 
@@ -1270,9 +1275,6 @@ export default function App() {
     if (phase === PHASE_FADE) {
       timeoutMs = 340;
       nextPhase = PHASE_BRIGHT;
-    } else if (phase === PHASE_BRIGHT) {
-      timeoutMs = 460;
-      nextPhase = PHASE_CROSS;
     } else if (phase === PHASE_CROSS) {
       timeoutMs = 640;
       nextPhase = PHASE_ROUGE;
@@ -1286,6 +1288,31 @@ export default function App() {
 
     const timer = window.setTimeout(() => setPhase(nextPhase), timeoutMs);
     return () => window.clearTimeout(timer);
+  }, [phase]);
+
+  useEffect(() => {
+    if (phase !== PHASE_BRIGHT) {
+      return undefined;
+    }
+
+    const proceed = () => {
+      setPhase((previous) =>
+        previous === PHASE_BRIGHT ? PHASE_CROSS : previous,
+      );
+    };
+    const handleKeyDown = (event) => {
+      if (event.key === "Enter" || event.key === " " || event.key === "Spacebar") {
+        event.preventDefault();
+        proceed();
+      }
+    };
+
+    window.addEventListener("pointerdown", proceed, true);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("pointerdown", proceed, true);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
   }, [phase]);
 
   useEffect(() => {
