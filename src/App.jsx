@@ -18,7 +18,7 @@ import diceIcon from "../assets/icons/dice.svg";
 import exitIcon from "../assets/icons/exit.svg";
 import flowerIcon from "../assets/icons/flower.svg";
 import towerIcon from "../assets/icons/tower.svg";
-import viewerRaw from "../date_arrangement/user?raw";
+import viewerProfile from "../date_arrangement/user.json";
 import { ak_tag_color_map, ak_tag_icon_map } from "./definedMaps";
 import { buildTimelineData, resolveDayBackground } from "./rougeData";
 
@@ -123,7 +123,14 @@ function formatStars(stars) {
 
 export default function App() {
   const timeline = useMemo(() => buildTimelineData(), []);
-  const viewerName = viewerRaw.trim();
+  const username = typeof viewerProfile?.username === "string"
+    ? viewerProfile.username.trim()
+    : "";
+  const nickname = typeof viewerProfile?.nickname === "string"
+    ? viewerProfile.nickname.trim()
+    : "";
+  const viewerName = nickname || username || "-";
+  const doctorName = username || viewerName;
   const lines = timeline.lines;
   const latestIndex = timeline.latestIndex;
 
@@ -140,6 +147,7 @@ export default function App() {
   const detailDrawerRef = useRef(null);
   const detailScrollRef = useRef(null);
   const cursorRef = useRef(null);
+  const entryLeftPanelRef = useRef(null);
   const boardTouchDragRef = useRef({
     active: false,
     startX: 0,
@@ -183,6 +191,7 @@ export default function App() {
   const [isDetailMouseDragging, setIsDetailMouseDragging] = useState(false);
   const [entryShadowReady, setEntryShadowReady] = useState(false);
   const entryShadowTimerRef = useRef(null);
+  const [entryCircleSize, setEntryCircleSize] = useState(0);
 
   const updateDetailLayout = useCallback(() => {
     if (typeof window === "undefined") {
@@ -406,26 +415,21 @@ export default function App() {
     );
 
     const unit = (viewportWidth * 0.9) / 3;
-    const cardWidth = Math.max(196, Math.min(340, Math.round(unit * 0.56)));
-    const columnGap = Math.max(52, Math.round(unit - cardWidth));
-    const columnTrack = Math.max(cardWidth + 20, Math.round(unit + cardWidth * 0.1));
+    const desiredCardWidth = Math.max(196, Math.min(340, Math.round(unit * 0.56)));
+    const desiredCardHeight = Math.max(24, Math.round(desiredCardWidth / 4));
 
-    const widthDrivenCardHeight = Math.max(
-      42,
-      Math.min(112, Math.round(cardWidth * 0.38)),
-    );
     const baseCardTagHeight = Math.max(
       16,
-      Math.min(24, Math.round(widthDrivenCardHeight * 0.34)),
+      Math.min(24, Math.round(desiredCardHeight * 0.34)),
     );
     const baseCardItemGap = Math.max(
       3,
-      Math.min(8, Math.round(widthDrivenCardHeight * 0.1)),
+      Math.min(8, Math.round(desiredCardHeight * 0.1)),
     );
-    const baseChainGap = Math.max(8, Math.round(widthDrivenCardHeight * 0.2));
+    const baseChainGap = Math.max(8, Math.round(desiredCardHeight * 0.2));
     const baseColumnStackGap = Math.max(
       12,
-      Math.round(widthDrivenCardHeight * 0.48),
+      Math.round(desiredCardHeight * 0.48),
     );
 
     let maxActivityCards = 1;
@@ -466,11 +470,14 @@ export default function App() {
     );
     const safeFittedCardHeight = Number.isFinite(fittedCardHeight)
       ? fittedCardHeight
-      : widthDrivenCardHeight;
+      : desiredCardHeight;
     const cardHeight = Math.max(
       24,
-      Math.min(widthDrivenCardHeight, safeFittedCardHeight),
+      Math.min(desiredCardHeight, safeFittedCardHeight),
     );
+    const cardWidth = Math.max(96, Math.round(cardHeight * 4));
+    const columnGap = Math.max(52, Math.round(unit - cardWidth));
+    const columnTrack = Math.max(cardWidth + 20, Math.round(unit + cardWidth * 0.1));
     const cardTagHeight = Math.max(
       12,
       Math.min(baseCardTagHeight, Math.round(cardHeight * 0.4)),
@@ -1120,6 +1127,38 @@ export default function App() {
     setActiveTimeIndex(latestIndex);
   }, [latestIndex]);
 
+  useLayoutEffect(() => {
+    const panel = entryLeftPanelRef.current;
+    if (!panel) {
+      return undefined;
+    }
+
+    const CIRCLE_BLUR_PX = 14;
+    const updateCircle = () => {
+      const rect = panel.getBoundingClientRect();
+      const rawSize = Math.min(rect.width, rect.height);
+      const size = Math.max(0, Math.floor(rawSize - CIRCLE_BLUR_PX * 2));
+      setEntryCircleSize((prev) => (Math.abs(prev - size) < 1 ? prev : size));
+    };
+
+    updateCircle();
+    let observer;
+    if (typeof ResizeObserver !== "undefined") {
+      observer = new ResizeObserver(() => updateCircle());
+      observer.observe(panel);
+    } else {
+      window.addEventListener("resize", updateCircle);
+    }
+
+    return () => {
+      if (observer) {
+        observer.disconnect();
+      } else {
+        window.removeEventListener("resize", updateCircle);
+      }
+    };
+  }, []);
+
   useEffect(() => {
     if (entryShadowReady) {
       return undefined;
@@ -1453,8 +1492,18 @@ export default function App() {
 
         <div className="min-h-0 flex-1 px-4 pb-5 sm:px-8 sm:pb-8">
           <div className="grid h-full grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-6">
-            <div className="relative overflow-hidden lg:col-span-4 lg:flex lg:items-center lg:justify-center">
-              <div className="concentric-circle pointer-events-none absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 lg:block" />
+            <div
+              ref={entryLeftPanelRef}
+              className="entry-left-panel relative overflow-hidden lg:col-span-4 lg:flex lg:items-center lg:justify-center"
+            >
+              <div
+                className="concentric-circle pointer-events-none absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 lg:block"
+                style={
+                  entryCircleSize > 0
+                    ? { width: `${entryCircleSize}px`, height: `${entryCircleSize}px` }
+                    : undefined
+                }
+              />
               <h1 className="left-title relative z-10 px-4 py-8 text-center text-4xl font-semibold tracking-[0.35em] text-amber-50 sm:text-5xl lg:px-2 lg:text-6xl">
                 {LEFT_LABEL}
               </h1>
@@ -1718,7 +1767,7 @@ export default function App() {
                                     </div>
                                   </button>
                                   <div
-                                    className={`rouge-card-tag-stripe ${revealed ? "" : "rouge-card-tag-stripe-placeholder"}`}
+                                    className={`rouge-card-tag-stripe ${revealed ? "" : "rouge-card-tag-stripe-placeholder"} ${locked ? "rouge-card-tag-stripe-locked" : ""}`}
                                     style={{
                                       "--rouge-card-color": activityColor,
                                     }}
@@ -1838,11 +1887,18 @@ export default function App() {
                 <button
                   type="button"
                   className="rouge-action-btn"
+                  disabled={
+                    Boolean(
+                      selectedByColumn[String(detailCard.columnIndex)] === detailCard.key,
+                    )
+                  }
                   onClick={() => {
                     const selectedKey =
                       selectedByColumn[String(detailCard.columnIndex)] ?? "";
                     if (!selectedKey || selectedKey === detailCard.key) {
                       chooseCard(detailCard);
+                      setDetailCardKey("");
+                      setDetailActivityIndex(0);
                     }
                   }}
                 >
@@ -1872,30 +1928,34 @@ export default function App() {
       >
         <div className="success-page-shell">
           <header className="success-page-top">
-            {DOCTOR_LABEL} {viewerName || "-"}
+            {DOCTOR_LABEL} {doctorName || "-"}
           </header>
 
           <div className="success-page-middle">
-            <h2 className="success-page-visitor-title">{VISITOR_LIST_LABEL}</h2>
-            <p className="success-page-mate">{mateText}</p>
+            <div className="success-page-middle-top">
+              <h2 className="success-page-visitor-title">{VISITOR_LIST_LABEL}</h2>
+              <p className="success-page-mate">{mateText}</p>
+            </div>
+
+            <div className="success-page-middle-bottom">
+              <div className="success-page-list-wrap">
+                {chosenCardTitles.length === 0 && (
+                  <p className="success-page-empty">-</p>
+                )}
+                {chosenCardTitles.length > 0 && (
+                  <ul className="success-page-list">
+                    {chosenCardTitles.map((title, titleIndex) => (
+                      <li key={`${title}-${titleIndex}`} className="success-page-item">
+                        {title}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="success-page-bottom">
-            <div className="success-page-list-wrap">
-              {chosenCardTitles.length === 0 && (
-                <p className="success-page-empty">-</p>
-              )}
-              {chosenCardTitles.length > 0 && (
-                <ul className="success-page-list">
-                  {chosenCardTitles.map((title, titleIndex) => (
-                    <li key={`${title}-${titleIndex}`} className="success-page-item">
-                      {title}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-
             <button
               type="button"
               className="success-return-btn"
