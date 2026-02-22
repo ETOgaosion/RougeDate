@@ -32,6 +32,8 @@ const RESET_CONFIRM_TEXT =
   "\u5c06\u6e05\u7a7a\u6240\u6709\u5df2\u9009\u5361\u7247\u5e76\u8fd4\u56de\u9875\u9762\u8d77\u70b9\uff0c\u786e\u8ba4\u5417\uff1f";
 const DOCTOR_LABEL = "Dr.";
 const VISITOR_LIST_LABEL = "\u6e38\u89c8\u8005\u540d\u5355";
+const SCREENSHOT_LABEL = "\u622a\u56fe";
+const SCREENSHOT_BUSY_LABEL = "\u622a\u56fe\u4e2d...";
 const UP_MARK = "\u25b2";
 const DOWN_MARK = "\u25bc";
 const DRAG_THRESHOLD = 6;
@@ -147,12 +149,14 @@ export default function App() {
   const detailDrawerRef = useRef(null);
   const detailScrollRef = useRef(null);
   const cursorRef = useRef(null);
+  const successShellRef = useRef(null);
   const entryLeftPanelRef = useRef(null);
   const boardTouchDragRef = useRef({
     active: false,
     startX: 0,
     startY: 0,
     startScrollLeft: 0,
+    startScrollTop: 0,
   });
   const boardMouseDragRef = useRef({
     active: false,
@@ -189,6 +193,7 @@ export default function App() {
   const [debuffHintOpen, setDebuffHintOpen] = useState(false);
   const [isBoardMouseDragging, setIsBoardMouseDragging] = useState(false);
   const [isDetailMouseDragging, setIsDetailMouseDragging] = useState(false);
+  const [isScreenshotting, setIsScreenshotting] = useState(false);
   const [entryShadowReady, setEntryShadowReady] = useState(false);
   const entryShadowTimerRef = useRef(null);
   const [entryCircleSize, setEntryCircleSize] = useState(0);
@@ -426,40 +431,34 @@ export default function App() {
       return;
     }
 
+    const visibleViewport = readVisibleViewport();
     const viewportWidth = Math.max(320, boardElement.clientWidth);
     const measuredBoardHeight = Math.max(180, boardElement.clientHeight);
+    const compactViewport = visibleViewport.width <= 1024;
+    const viewportHeight = Math.max(
+      180,
+      visibleViewport.height || measuredBoardHeight,
+    );
     const topBarHeight = Math.max(
       0,
       topBarRef.current?.getBoundingClientRect().height ?? 0,
     );
-    const visualViewportHeight =
-      readVisibleViewport().height || measuredBoardHeight;
-    const viewportBoardHeight = Math.max(
+    const verticalReserve = compactViewport ? 64 : 28;
+    const heightDrivenBoardSpace = Math.max(
       120,
-      visualViewportHeight - topBarHeight - 28,
+      viewportHeight - topBarHeight - verticalReserve,
     );
     const availableHeight = Math.max(
       120,
-      Math.min(measuredBoardHeight - 12, viewportBoardHeight),
+      Math.min(
+        measuredBoardHeight - (compactViewport ? 8 : 12),
+        heightDrivenBoardSpace,
+      ),
     );
+    const minCardHeight = compactViewport ? 30 : 24;
+    const maxCardHeight = compactViewport ? 74 : 88;
 
     const unit = (viewportWidth * 0.9) / 3;
-    const desiredCardWidth = Math.max(196, Math.min(340, Math.round(unit * 0.56)));
-    const desiredCardHeight = Math.max(24, Math.round(desiredCardWidth / 4));
-
-    const baseCardTagHeight = Math.max(
-      16,
-      Math.min(24, Math.round(desiredCardHeight * 0.34)),
-    );
-    const baseCardItemGap = Math.max(
-      3,
-      Math.min(8, Math.round(desiredCardHeight * 0.1)),
-    );
-    const baseChainGap = Math.max(8, Math.round(desiredCardHeight * 0.2));
-    const baseColumnStackGap = Math.max(
-      12,
-      Math.round(desiredCardHeight * 0.48),
-    );
 
     let maxActivityCards = 1;
     let maxInnerGaps = 0;
@@ -489,6 +488,27 @@ export default function App() {
       }
     }
 
+    const heightDrivenCardHeight = Math.round(
+      heightDrivenBoardSpace * (compactViewport ? 0.115 : 0.105),
+    );
+    const desiredCardHeight = Math.max(
+      minCardHeight,
+      Math.min(maxCardHeight, heightDrivenCardHeight),
+    );
+    const baseCardTagHeight = Math.max(
+      16,
+      Math.min(24, Math.round(desiredCardHeight * 0.34)),
+    );
+    const baseCardItemGap = Math.max(
+      3,
+      Math.min(8, Math.round(desiredCardHeight * 0.1)),
+    );
+    const baseChainGap = Math.max(8, Math.round(desiredCardHeight * 0.2));
+    const baseColumnStackGap = Math.max(
+      12,
+      Math.round(desiredCardHeight * 0.48),
+    );
+
     const reservedGapHeight =
       maxInnerGaps * baseChainGap + Math.max(0, maxChains - 1) * baseColumnStackGap;
     const reservedLabelHeight =
@@ -501,10 +521,10 @@ export default function App() {
       ? fittedCardHeight
       : desiredCardHeight;
     const cardHeight = Math.max(
-      24,
+      minCardHeight,
       Math.min(desiredCardHeight, safeFittedCardHeight),
     );
-    const cardWidth = Math.max(96, Math.round(cardHeight * 4));
+    const cardWidth = Math.round(cardHeight * 4);
     const columnGap = Math.max(52, Math.round(unit - cardWidth));
     const columnTrack = Math.max(cardWidth + 20, Math.round(unit + cardWidth * 0.1));
     const cardTagHeight = Math.max(
@@ -628,6 +648,7 @@ export default function App() {
         startX: touch.clientX,
         startY: touch.clientY,
         startScrollLeft: boardElement.scrollLeft,
+        startScrollTop: boardElement.scrollTop,
       };
     },
     [stopBoardTouchDrag],
@@ -643,13 +664,17 @@ export default function App() {
     const touch = event.touches[0];
     const deltaX = touch.clientX - dragState.startX;
     const deltaY = touch.clientY - dragState.startY;
-    const dominantDelta =
-      Math.abs(deltaX) >= Math.abs(deltaY) ? deltaX : deltaY;
+    const horizontalDominant = Math.abs(deltaX) >= Math.abs(deltaY);
+    const dominantDelta = horizontalDominant ? deltaX : deltaY;
     if (Math.abs(dominantDelta) < 4) {
       return;
     }
 
-    boardElement.scrollLeft = dragState.startScrollLeft - dominantDelta;
+    if (horizontalDominant) {
+      boardElement.scrollLeft = dragState.startScrollLeft - deltaX;
+    } else {
+      boardElement.scrollTop = dragState.startScrollTop - deltaY;
+    }
     if (event.cancelable) {
       event.preventDefault();
     }
@@ -749,22 +774,19 @@ export default function App() {
         return;
       }
 
-      const resolveLandscapeSign = () => {
+      const resolvePortraitSign = () => {
         const orientation = window.screen?.orientation;
         const type = orientation?.type ?? "";
-        if (type.includes("landscape-primary")) {
+        if (type.includes("portrait-primary")) {
           return 1;
         }
-        if (type.includes("landscape-secondary")) {
+        if (type.includes("portrait-secondary")) {
           return -1;
         }
 
         const rawAngle = orientation?.angle ?? window.orientation ?? 0;
-        if (rawAngle === 270 || rawAngle === -270) {
+        if (rawAngle === 180 || rawAngle === -180) {
           return -1;
-        }
-        if (rawAngle === -90 || rawAngle === 90) {
-          return 1;
         }
         return 1;
       };
@@ -772,8 +794,8 @@ export default function App() {
       const touch = event.touches[0];
       detailTouchDragRef.current = {
         active: true,
-        axis: landscapeQuery.matches ? "x" : "y",
-        sign: landscapeQuery.matches ? resolveLandscapeSign() : 1,
+        axis: portraitQuery.matches ? "x" : "y",
+        sign: portraitQuery.matches ? resolvePortraitSign() : 1,
         startX: touch.clientX,
         startY: touch.clientY,
         startScrollTop: detailElement.scrollTop,
@@ -1440,6 +1462,133 @@ export default function App() {
     }
   }, [activeTimeIndex]);
 
+  const captureSuccessScreenshot = useCallback(async () => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const target = successShellRef.current;
+    if (!target || isScreenshotting) {
+      return;
+    }
+    if (!navigator.mediaDevices?.getDisplayMedia) {
+      window.alert("Current browser does not support screenshot capture.");
+      return;
+    }
+
+    let stream = null;
+    let video = null;
+    try {
+      setIsScreenshotting(true);
+      stream = await navigator.mediaDevices.getDisplayMedia({
+        video: {
+          frameRate: 1,
+        },
+        audio: false,
+      });
+
+      video = document.createElement("video");
+      video.playsInline = true;
+      video.muted = true;
+      video.srcObject = stream;
+      await video.play();
+      await new Promise((resolve) => {
+        window.requestAnimationFrame(() => resolve());
+      });
+
+      const track = stream.getVideoTracks()[0];
+      const settings = track?.getSettings?.() ?? {};
+      const sourceWidth = Math.max(
+        1,
+        Number(settings.width) || video.videoWidth || 1,
+      );
+      const sourceHeight = Math.max(
+        1,
+        Number(settings.height) || video.videoHeight || 1,
+      );
+
+      const viewport = readVisibleViewport();
+      const viewportWidth = Math.max(1, viewport.width || window.innerWidth || 1);
+      const viewportHeight = Math.max(1, viewport.height || window.innerHeight || 1);
+      const rect = target.getBoundingClientRect();
+      const scaleX = sourceWidth / viewportWidth;
+      const scaleY = sourceHeight / viewportHeight;
+
+      const rawX = (rect.left - viewport.offsetLeft) * scaleX;
+      const rawY = (rect.top - viewport.offsetTop) * scaleY;
+      const rawWidth = rect.width * scaleX;
+      const rawHeight = rect.height * scaleY;
+
+      const sourceX = Math.max(0, Math.floor(rawX));
+      const sourceY = Math.max(0, Math.floor(rawY));
+      const sourceCropWidth = Math.max(
+        1,
+        Math.min(sourceWidth - sourceX, Math.floor(rawWidth)),
+      );
+      const sourceCropHeight = Math.max(
+        1,
+        Math.min(sourceHeight - sourceY, Math.floor(rawHeight)),
+      );
+
+      const canvas = document.createElement("canvas");
+      canvas.width = sourceCropWidth;
+      canvas.height = sourceCropHeight;
+      const context = canvas.getContext("2d");
+      if (!context) {
+        throw new Error("Failed to create canvas context.");
+      }
+      context.drawImage(
+        video,
+        sourceX,
+        sourceY,
+        sourceCropWidth,
+        sourceCropHeight,
+        0,
+        0,
+        sourceCropWidth,
+        sourceCropHeight,
+      );
+
+      const blob = await new Promise((resolve, reject) => {
+        canvas.toBlob((result) => {
+          if (result) {
+            resolve(result);
+            return;
+          }
+          reject(new Error("Failed to encode screenshot."));
+        }, "image/png");
+      });
+      const now = new Date();
+      const pad = (value) => String(value).padStart(2, "0");
+      const filename = `rougedate-success-${now.getFullYear()}${pad(
+        now.getMonth() + 1,
+      )}${pad(now.getDate())}-${pad(now.getHours())}${pad(
+        now.getMinutes(),
+      )}${pad(now.getSeconds())}.png`;
+
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.setTimeout(() => window.URL.revokeObjectURL(downloadUrl), 1200);
+    } catch (error) {
+      if (error?.name !== "NotAllowedError" && error?.name !== "AbortError") {
+        window.alert("Screenshot failed. Please try again.");
+      }
+    } finally {
+      if (video) {
+        video.pause();
+        video.srcObject = null;
+      }
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
+      setIsScreenshotting(false);
+    }
+  }, [isScreenshotting, readVisibleViewport]);
+
   useLayoutEffect(() => {
     if (phase !== PHASE_ROUGE) {
       return;
@@ -1567,19 +1716,20 @@ export default function App() {
         </div>
 
         <div className="min-h-0 flex-1 px-4 pb-5 sm:px-8 sm:pb-8">
-          <div className="grid h-full grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-6">
+          <div className="grid h-full min-w-0 grid-cols-[30%_70%] gap-3 sm:grid-cols-[34%_66%] lg:grid-cols-12 lg:gap-6">
             <div
               ref={entryLeftPanelRef}
-              className="entry-left-panel relative overflow-hidden lg:col-span-4 lg:flex lg:items-center lg:justify-center"
+              className="entry-left-panel relative flex min-h-0 items-center justify-center overflow-hidden lg:col-span-4"
             >
               <div
-                className="concentric-circle pointer-events-none absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 lg:block"
+                className="concentric-circle pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
                 style={
                   entryCircleSize > 0
                     ? { width: `${entryCircleSize}px`, height: `${entryCircleSize}px` }
                     : undefined
                 }
               />
+              <div className="pointer-events-none absolute right-0 top-1/2 h-16 w-12 -translate-y-1/2 bg-[linear-gradient(90deg,rgba(255,255,255,0)_0%,rgba(255,255,255,0.98)_82%)] [clip-path:polygon(0_0,0_100%,100%_50%)] lg:hidden" />
               <h1 className="left-title relative z-10 px-4 py-8 text-center text-4xl font-semibold tracking-[0.35em] text-amber-50 sm:text-5xl lg:px-2 lg:text-6xl">
                 {LEFT_LABEL}
               </h1>
@@ -1591,7 +1741,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className="relative min-h-0 lg:col-span-7">
+            <div className="relative min-h-0 min-w-0 lg:col-span-7">
               <div
                 ref={scrollAreaRef}
                 className="timeline-scroll h-full overflow-y-auto rounded-xl border border-white/20 p-3 sm:p-4"
@@ -1718,13 +1868,13 @@ export default function App() {
           </div>
         </header>
 
-        <div className="relative min-h-0 flex-1 overflow-hidden p-3 sm:p-5">
-          <div
-            ref={boardRef}
-            className={`rouge-board-scroll rouge-drag-scroll-x h-full w-full overflow-auto rounded-lg border border-white/20 bg-black/20 p-4 ${isBoardMouseDragging ? "rouge-drag-active" : ""}`}
-            onScroll={recalculateConnections}
-            onMouseDown={handleBoardMouseDown}
-            onClickCapture={handleBoardClickCapture}
+        <div className="relative min-h-0 flex-1 overflow-hidden px-3 sm:px-5">
+            <div
+              ref={boardRef}
+              className={`rouge-board-scroll rouge-drag-scroll-x h-full w-full overflow-auto rounded-lg border border-white/20 bg-black/20 px-4 py-2 ${isBoardMouseDragging ? "rouge-drag-active" : ""}`}
+              onScroll={recalculateConnections}
+              onMouseDown={handleBoardMouseDown}
+              onClickCapture={handleBoardClickCapture}
             onTouchStart={handleBoardTouchStart}
             onTouchMove={handleBoardTouchMove}
             onTouchEnd={handleBoardTouchEnd}
@@ -2002,44 +2152,49 @@ export default function App() {
         aria-hidden={!successActive}
         inert={successActive ? undefined : ""}
       >
-        <div className="success-page-shell">
+        <div ref={successShellRef} className="success-page-shell">
           <header className="success-page-top">
             {DOCTOR_LABEL} {doctorName || "-"}
           </header>
 
-          <div className="success-page-middle">
-            <div className="success-page-middle-top">
-              <h2 className="success-page-visitor-title">{VISITOR_LIST_LABEL}</h2>
-              <p className="success-page-mate">{mateText}</p>
-            </div>
+          <section className="success-page-info-box">
+            <h2 className="success-page-visitor-title">{VISITOR_LIST_LABEL}</h2>
+            <p className="success-page-mate">{mateText}</p>
+          </section>
 
-            <div className="success-page-middle-bottom">
-              <div className="success-page-list-wrap">
-                {chosenCardTitles.length === 0 && (
-                  <p className="success-page-empty">-</p>
-                )}
-                {chosenCardTitles.length > 0 && (
-                  <ul className="success-page-list">
-                    {chosenCardTitles.map((title, titleIndex) => (
-                      <li key={`${title}-${titleIndex}`} className="success-page-item">
-                        {title}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+          <section className="success-page-cards-box">
+            <div className="success-page-actions">
+              <button
+                type="button"
+                className="success-shot-btn"
+                onClick={captureSuccessScreenshot}
+                disabled={isScreenshotting}
+              >
+                {isScreenshotting ? SCREENSHOT_BUSY_LABEL : SCREENSHOT_LABEL}
+              </button>
+              <button
+                type="button"
+                className="success-return-btn"
+                onClick={returnToEntry}
+              >
+                {RETURN_ENTRY_LABEL}
+              </button>
             </div>
-          </div>
-
-          <div className="success-page-bottom">
-            <button
-              type="button"
-              className="success-return-btn"
-              onClick={returnToEntry}
-            >
-              {RETURN_ENTRY_LABEL}
-            </button>
-          </div>
+            <div className="success-page-list-wrap">
+              {chosenCardTitles.length === 0 && (
+                <p className="success-page-empty">-</p>
+              )}
+              {chosenCardTitles.length > 0 && (
+                <ul className="success-page-list">
+                  {chosenCardTitles.map((title, titleIndex) => (
+                    <li key={`${title}-${titleIndex}`} className="success-page-item">
+                      {title}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
         </div>
       </section>
 
