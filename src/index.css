@@ -8,11 +8,23 @@ body,
   height: 100%;
 }
 
+:root {
+  --app-visible-width: 100vw;
+  --app-visible-height: 100vh;
+  --app-visible-offset-left: 0px;
+  --app-visible-offset-top: 0px;
+}
+
 body {
   margin: 0;
   background: #030303;
   color: #f2f2f2;
   font-family: "Consolas", "Courier New", monospace;
+}
+
+.app-root {
+  width: var(--app-visible-width, 100vw);
+  height: var(--app-visible-height, 100vh);
 }
 
 .rouge-custom-cursor {
@@ -485,7 +497,7 @@ body {
   inset: 72px 0 0 auto;
   z-index: 60;
   width: var(--detail-drawer-width, 33.333vw);
-  max-width: calc(100vw - 1rem);
+  max-width: calc(var(--app-visible-width, 100vw) - 1rem);
   transform: translateX(104%);
   transition: transform 240ms ease;
   overscroll-behavior-x: none;
@@ -853,10 +865,10 @@ body {
   .app-root {
     --mobile-scale: 0.86;
     position: fixed;
-    top: 0;
-    left: 0;
-    width: calc(100vw / var(--mobile-scale));
-    height: calc(100vh / var(--mobile-scale));
+    top: var(--app-visible-offset-top, 0px);
+    left: var(--app-visible-offset-left, 0px);
+    width: calc(var(--app-visible-width, 100vw) / var(--mobile-scale));
+    height: calc(var(--app-visible-height, 100vh) / var(--mobile-scale));
     transform: scale(var(--mobile-scale));
     transform-origin: top left;
   }
@@ -902,7 +914,7 @@ body {
   .rouge-detail-drawer {
     inset: 56px 0 0 auto;
     width: min(78vw, 460px);
-    max-width: calc(100vw - 0.5rem);
+    max-width: calc(var(--app-visible-width, 100vw) - 0.5rem);
     height: calc(100% - 56px);
     transform: translateX(104%);
   }
@@ -919,8 +931,8 @@ body {
 
 @media (max-width: 1024px) and (orientation: portrait) {
   .app-root {
-    width: calc(100vh / var(--mobile-scale));
-    height: calc(100vw / var(--mobile-scale));
+    width: calc(var(--app-visible-height, 100vh) / var(--mobile-scale));
+    height: calc(var(--app-visible-width, 100vw) / var(--mobile-scale));
     transform: scale(var(--mobile-scale)) rotate(90deg) translateY(-100%);
     transform-origin: top left;
   }

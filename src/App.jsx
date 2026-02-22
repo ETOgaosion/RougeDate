@@ -193,12 +193,41 @@ export default function App() {
   const entryShadowTimerRef = useRef(null);
   const [entryCircleSize, setEntryCircleSize] = useState(0);
 
+  const readVisibleViewport = useCallback(() => {
+    if (typeof window === "undefined") {
+      return {
+        width: 0,
+        height: 0,
+        offsetLeft: 0,
+        offsetTop: 0,
+      };
+    }
+
+    const visualViewport = window.visualViewport;
+    const width =
+      visualViewport?.width ??
+      window.innerWidth ??
+      document.documentElement.clientWidth ??
+      0;
+    const height =
+      visualViewport?.height ??
+      window.innerHeight ??
+      document.documentElement.clientHeight ??
+      0;
+
+    return {
+      width: Math.max(0, width),
+      height: Math.max(0, height),
+      offsetLeft: Math.max(0, visualViewport?.offsetLeft ?? 0),
+      offsetTop: Math.max(0, visualViewport?.offsetTop ?? 0),
+    };
+  }, []);
+
   const updateDetailLayout = useCallback(() => {
     if (typeof window === "undefined") {
       return;
     }
-    const width = window.innerWidth || 0;
-    const height = window.innerHeight || 0;
+    const { width, height } = readVisibleViewport();
     if (!width || !height) {
       return;
     }
@@ -215,7 +244,7 @@ export default function App() {
       "--detail-drawer-width",
       `${Math.round(drawerWidth)}px`,
     );
-  }, []);
+  }, [readVisibleViewport]);
   const [boardLayout, setBoardLayout] = useState({
     cardWidth: 220,
     cardHeight: 82,
@@ -404,7 +433,7 @@ export default function App() {
       topBarRef.current?.getBoundingClientRect().height ?? 0,
     );
     const visualViewportHeight =
-      window.visualViewport?.height ?? window.innerHeight ?? measuredBoardHeight;
+      readVisibleViewport().height || measuredBoardHeight;
     const viewportBoardHeight = Math.max(
       120,
       visualViewportHeight - topBarHeight - 28,
@@ -516,7 +545,7 @@ export default function App() {
         columnStackGap,
       };
     });
-  }, [activeDay]);
+  }, [activeDay, readVisibleViewport]);
 
   const stopBoardMouseDrag = useCallback(() => {
     boardMouseDragRef.current.active = false;
@@ -794,12 +823,48 @@ export default function App() {
   }, [handleBoardMouseMove, handleBoardMouseUp, handleDetailMouseMove, handleDetailMouseUp]);
 
   useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    const syncViewportVars = () => {
+      const { width, height, offsetLeft, offsetTop } = readVisibleViewport();
+      if (!width || !height) {
+        return;
+      }
+      const rootStyle = document.documentElement.style;
+      rootStyle.setProperty("--app-visible-width", `${Math.round(width)}px`);
+      rootStyle.setProperty("--app-visible-height", `${Math.round(height)}px`);
+      rootStyle.setProperty("--app-visible-offset-left", `${Math.round(offsetLeft)}px`);
+      rootStyle.setProperty("--app-visible-offset-top", `${Math.round(offsetTop)}px`);
+    };
+
+    syncViewportVars();
+    window.addEventListener("resize", syncViewportVars);
+    window.addEventListener("orientationchange", syncViewportVars);
+    const visualViewport = window.visualViewport;
+    visualViewport?.addEventListener("resize", syncViewportVars);
+    visualViewport?.addEventListener("scroll", syncViewportVars);
+    return () => {
+      window.removeEventListener("resize", syncViewportVars);
+      window.removeEventListener("orientationchange", syncViewportVars);
+      visualViewport?.removeEventListener("resize", syncViewportVars);
+      visualViewport?.removeEventListener("scroll", syncViewportVars);
+    };
+  }, [readVisibleViewport]);
+
+  useEffect(() => {
     updateDetailLayout();
     window.addEventListener("resize", updateDetailLayout);
     window.addEventListener("orientationchange", updateDetailLayout);
+    const visualViewport = window.visualViewport;
+    visualViewport?.addEventListener("resize", updateDetailLayout);
+    visualViewport?.addEventListener("scroll", updateDetailLayout);
     return () => {
       window.removeEventListener("resize", updateDetailLayout);
       window.removeEventListener("orientationchange", updateDetailLayout);
+      visualViewport?.removeEventListener("resize", updateDetailLayout);
+      visualViewport?.removeEventListener("scroll", updateDetailLayout);
     };
   }, [updateDetailLayout]);
 
@@ -1214,8 +1279,19 @@ export default function App() {
       updateBoardLayout();
       recalculateConnections();
     };
+
+    onResize();
     window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    window.addEventListener("orientationchange", onResize);
+    const visualViewport = window.visualViewport;
+    visualViewport?.addEventListener("resize", onResize);
+    visualViewport?.addEventListener("scroll", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("orientationchange", onResize);
+      visualViewport?.removeEventListener("resize", onResize);
+      visualViewport?.removeEventListener("scroll", onResize);
+    };
   }, [
     recalculateConnections,
     updateBoardLayout,
@@ -1454,7 +1530,7 @@ export default function App() {
           : 0.14;
 
   return (
-    <main className="app-root relative h-screen w-screen overflow-hidden text-slateMist">
+    <main className="app-root relative overflow-hidden text-slateMist">
       <img
         src={mainBackground}
         alt="Main background"
