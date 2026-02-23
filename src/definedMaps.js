@@ -8,7 +8,9 @@ const ak_tag_color_map = {
   "\u547d\u8fd0\u6240\u6307": "#14bec0",
   "\u5f97\u507f\u6240\u613f": "#1a9358",
   "\u8bd2\u610f\u884c\u5546": "#1a9358",
+  "\u8bef\u5165\u5176\u5883": "#e241e5",
   "\u51fa\u56ed": "#1a9358",
+  "\u6b21\u65e5": "#1a9358",
 };
 
 const ak_tag_icon_map = {
@@ -21,7 +23,9 @@ const ak_tag_icon_map = {
   "\u547d\u8fd0\u6240\u6307": "dialog",
   "\u5f97\u507f\u6240\u613f": "coin",
   "\u8bd2\u610f\u884c\u5546": "box",
+  "\u8bef\u5165\u5176\u5883": "spiral",
   "\u51fa\u56ed": "exit",
+  "\u6b21\u65e5": "next",
 };
 
 export default ak_tag_color_map;

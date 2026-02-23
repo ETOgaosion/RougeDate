@@ -9,7 +9,7 @@
             "day": 0,
             "date": "2026/2/23",
             "debuff": "雨",
-			"debuff_hint": "9点后下雨，需及时送小鱼回家",
+			"debuff_hint": "晚10点半下雨，需及时送小鱼回家",
             "plans": [
                 {
                     "column": 1,
@@ -138,6 +138,24 @@
                                     "negatives": "离小鱼家太近，less sense of freshness"
                                 }
                             ]
+                        },
+                        {
+                            "id": 6,
+                            "connect_from": [0, 1, 2],
+                            "time": "2026/2/23 18:00",
+                            "activities": [
+                                {
+                                    "tags": ["吃喝"],
+                                    "ak_tag": "险路恶敌",
+                                    "activity": "晚饭：高层城景日料自助",
+                                    "location": "虹料理（万怡酒店19楼）",
+                                    "geography": "在万象汇斜对面",
+                                    "duration": "120分钟",
+                                    "recommendation_stars": 2,
+                                    "notes": "漂亮饭，看上去还蛮有食欲，吃完可以去万象汇二次元启动",
+                                    "negatives": "从外看楼有点旧，自助似乎没有鲜虾"
+                                }
+                            ]
                         }
                     ]
                 },
@@ -145,9 +163,9 @@
                     "column": 3,
                     "cards": [
                         {
-                            "id": 5,
-                            "connect_from": [3],
-                            "time": "2026/2/23 20:00",
+                            "id": 7,
+                            "connect_from": [3, 4],
+                            "time": "2026/2/23 19:30",
                             "activities": [
                                 {
                                     "tags": ["休闲", "吃喝"],
@@ -162,9 +180,26 @@
                             ]
                         },
                         {
-                            "id": 6,
-                            "connect_from": [3, 5],
-                            "time": "2026/2/23 20:10",
+                            "id": 8,
+                            "connect_from": [3, 4],
+                            "time": "2026/2/23 19:45",
+                            "activities": [
+                                {
+                                    "tags": ["逛街", "古典"],
+                                    "ak_tag": "误入其境",
+                                    "activity": "何园夜游",
+                                    "location": "何园",
+                                    "geography": "广陵何园",
+                                    "duration": "30分钟",
+                                    "recommendation_stars": 4.0,
+                                    "notes": "有点意境、有点恐怖，有点体验（"
+                                }
+                            ]
+                        },
+                        {
+                            "id": 9,
+                            "connect_from": [3, 4],
+                            "time": "2026/2/23 19:30",
                             "activities": [
                                 {
                                     "tags": ["逛商场"],
@@ -179,9 +214,9 @@
                             ]
 						},
 						{
-							"id": 7,
-							"connect_from": [5],
-							"time": "2026/2/23 20:10",
+							"id": 10,
+							"connect_from": [3, 4, 5, 6],
+							"time": "2026/2/23 19:30",
 							"activities": [
 								{
 									"tags": ["逛街", "散步", "休息"],
@@ -202,8 +237,8 @@
 					"column": 4,
 					"cards": [
 						{
-							"id": 8,
-							"connect_from": [6, 7],
+							"id": 11,
+							"connect_from": [7, 8, 9, 10],
 							"time": "2026/2/23 21:00",
 							"activities": [
 								{

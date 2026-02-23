@@ -595,6 +595,35 @@ body {
   font-weight: 600;
 }
 
+.rouge-activity-title-wrap {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.38rem;
+  min-width: 0;
+}
+
+.rouge-activity-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  border-radius: 999px;
+  background: color-mix(
+    in srgb,
+    var(--rouge-activity-tag-color, #13b4cc) 72%,
+    rgba(0, 0, 0, 0.16)
+  );
+  color: rgba(245, 252, 255, 0.96);
+  font-size: calc(0.68rem * var(--detail-font-scale, 1));
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.05;
+  padding: 0.14rem 0.48rem;
+  white-space: nowrap;
+}
+
 .rouge-activity-score {
   color: rgba(127, 249, 245, 0.93);
   font-size: calc(0.73rem * var(--detail-font-scale, 1));

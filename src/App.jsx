@@ -6,7 +6,8 @@
   useRef,
   useState,
 } from "react";
-import mainBackground from "../assets/images/main_background_heng.png";
+import mainBackground from "../assets/images/main_background_li.png";
+import introBackground from "../assets/images/main_background_heng.png";
 import successBackground from "../assets/images/success_page.png";
 import checkCircleIcon from "../assets/icons/check_circle.svg";
 import battleIcon from "../assets/icons/battle.svg";
@@ -46,6 +47,9 @@ const PHASE_ROUGE = "rouge";
 const PHASE_SUCCESS_FADE = "success-fade-content";
 const PHASE_SUCCESS_CROSS = "success-cross-dissolve";
 const PHASE_SUCCESS = "success";
+const INTRO_SCENE_FIRST = "first";
+const INTRO_SCENE_CROSS = "cross";
+const INTRO_SCENE_DONE = "done";
 const EXIT_AK_TAG = "\u51fa\u56ed";
 const EXIT_AK_TAG_FALLBACK = "鍑哄洯";
 const EXIT_TAG_SET = new Set([EXIT_AK_TAG, EXIT_AK_TAG_FALLBACK]);
@@ -194,6 +198,9 @@ export default function App() {
   const [isBoardMouseDragging, setIsBoardMouseDragging] = useState(false);
   const [isDetailMouseDragging, setIsDetailMouseDragging] = useState(false);
   const [isScreenshotting, setIsScreenshotting] = useState(false);
+  const [entryIntroLocked, setEntryIntroLocked] = useState(true);
+  const [entryIntroScene, setEntryIntroScene] = useState(INTRO_SCENE_FIRST);
+  const entryIntroTimerRef = useRef(null);
   const [entryShadowReady, setEntryShadowReady] = useState(false);
   const entryShadowTimerRef = useRef(null);
   const [entryCircleSize, setEntryCircleSize] = useState(0);
@@ -1261,12 +1268,7 @@ export default function App() {
   }, [entryShadowReady]);
 
   useEffect(() => {
-    if (
-      phase === PHASE_ENTRY ||
-      phase === PHASE_BRIGHT ||
-      phase === PHASE_ROUGE ||
-      phase === PHASE_SUCCESS
-    ) {
+    if (phase === PHASE_ENTRY || phase === PHASE_ROUGE || phase === PHASE_SUCCESS) {
       return undefined;
     }
 
@@ -1275,6 +1277,9 @@ export default function App() {
     if (phase === PHASE_FADE) {
       timeoutMs = 340;
       nextPhase = PHASE_BRIGHT;
+    } else if (phase === PHASE_BRIGHT) {
+      timeoutMs = 460;
+      nextPhase = PHASE_CROSS;
     } else if (phase === PHASE_CROSS) {
       timeoutMs = 640;
       nextPhase = PHASE_ROUGE;
@@ -1291,14 +1296,24 @@ export default function App() {
   }, [phase]);
 
   useEffect(() => {
-    if (phase !== PHASE_BRIGHT) {
+    if (
+      phase !== PHASE_ENTRY ||
+      !entryIntroLocked ||
+      entryIntroScene !== INTRO_SCENE_FIRST
+    ) {
       return undefined;
     }
 
     const proceed = () => {
-      setPhase((previous) =>
-        previous === PHASE_BRIGHT ? PHASE_CROSS : previous,
-      );
+      if (entryIntroTimerRef.current) {
+        return;
+      }
+      setEntryIntroScene(INTRO_SCENE_CROSS);
+      entryIntroTimerRef.current = window.setTimeout(() => {
+        setEntryIntroScene(INTRO_SCENE_DONE);
+        setEntryIntroLocked(false);
+        entryIntroTimerRef.current = null;
+      }, 760);
     };
     const handleKeyDown = (event) => {
       if (event.key === "Enter" || event.key === " " || event.key === "Spacebar") {
@@ -1313,7 +1328,17 @@ export default function App() {
       window.removeEventListener("pointerdown", proceed, true);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [phase]);
+  }, [entryIntroLocked, entryIntroScene, phase]);
+
+  useEffect(
+    () => () => {
+      if (entryIntroTimerRef.current) {
+        window.clearTimeout(entryIntroTimerRef.current);
+        entryIntroTimerRef.current = null;
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     const onResize = () => {
@@ -1664,8 +1689,8 @@ export default function App() {
   const successOpacity = successActive ? 1 : 0;
 
   const entryLayerStyle = {
-    opacity: entryOpacity,
-    pointerEvents: entryActive ? "auto" : "none",
+    opacity: entryActive && !entryIntroLocked ? entryOpacity : 0,
+    pointerEvents: entryActive && !entryIntroLocked ? "auto" : "none",
     zIndex: entryActive ? 50 : 20,
   };
   const rougeLayerStyle = {
@@ -1678,8 +1703,18 @@ export default function App() {
     pointerEvents: successActive ? "auto" : "none",
     zIndex: successActive ? 50 : 40,
   };
+  const introLocked = phase === PHASE_ENTRY && entryIntroLocked;
+  const introCrossing = introLocked && entryIntroScene === INTRO_SCENE_CROSS;
+  const introFirstOpacity = introLocked ? (introCrossing ? 0 : 1) : 0;
+  const introSecondOpacity = introLocked && introCrossing ? 1 : 0;
   const mainOpacity =
-    phase === PHASE_ENTRY || phase === PHASE_FADE || phase === PHASE_BRIGHT ? 1 : 0;
+    phase === PHASE_ENTRY
+      ? entryIntroLocked
+        ? 0
+        : 1
+      : phase === PHASE_FADE || phase === PHASE_BRIGHT
+        ? 1
+        : 0;
   const dayOpacity =
     phase === PHASE_CROSS ||
     phase === PHASE_ROUGE ||
@@ -1690,9 +1725,11 @@ export default function App() {
     phase === PHASE_SUCCESS_CROSS || phase === PHASE_SUCCESS ? 1 : 0;
   const shadowOpacity =
     phase === PHASE_ENTRY
-      ? entryShadowReady
-        ? 0.58
-        : 0
+      ? entryIntroLocked
+        ? 0
+        : entryShadowReady
+          ? 0.58
+          : 0
       : phase === PHASE_FADE
         ? 0.32
         : phase === PHASE_SUCCESS_CROSS || phase === PHASE_SUCCESS
@@ -1701,6 +1738,22 @@ export default function App() {
 
   return (
     <main className="app-root relative overflow-hidden text-slateMist">
+      <img
+        src={introBackground}
+        alt="Intro scene first"
+        className="pointer-events-none absolute inset-0 h-full w-full object-cover transition-opacity duration-[760ms]"
+        style={{
+          opacity: introFirstOpacity,
+        }}
+      />
+      <img
+        src={mainBackground}
+        alt="Intro scene second"
+        className="pointer-events-none absolute inset-0 h-full w-full object-cover transition-opacity duration-[760ms]"
+        style={{
+          opacity: introSecondOpacity,
+        }}
+      />
       <img
         src={mainBackground}
         alt="Main background"
@@ -2074,16 +2127,31 @@ export default function App() {
                 </div>
 
                 <div className="rouge-detail-body">
-                  {detailCard.activities.map((activity, idx) => (
-                    <article key={`${detailCard.key}-${idx + 1}`} className="rouge-activity-panel">
-                      <div className="rouge-activity-top">
-                        <div className="rouge-activity-title">
-                          {activity.activity || `Activity ${idx + 1}`}
+                  {detailCard.activities.map((activity, idx) => {
+                    const activityTagValue =
+                      activity.akTag || detailCard.akTags?.[0] || "";
+                    const activityTagText = activityTagValue || "No ak_tag";
+                    const activityTagColor = getTagColor(activityTagValue);
+                    return (
+                      <article key={`${detailCard.key}-${idx + 1}`} className="rouge-activity-panel">
+                        <div className="rouge-activity-top">
+                          <div className="rouge-activity-title-wrap">
+                            <div className="rouge-activity-title">
+                              {activity.activity || `Activity ${idx + 1}`}
+                            </div>
+                            <span
+                              className="rouge-activity-tag"
+                              style={{
+                                "--rouge-activity-tag-color": activityTagColor,
+                              }}
+                            >
+                              {activityTagText}
+                            </span>
+                          </div>
+                          <div className="rouge-activity-score">
+                            {formatStars(activity.recommendationStars)}
+                          </div>
                         </div>
-                        <div className="rouge-activity-score">
-                          {formatStars(activity.recommendationStars)}
-                        </div>
-                      </div>
                       <div className="rouge-activity-grid">
                         <span>{`\uD83D\uDCCD 地点：${activity.location || "-"}`}</span>
                         <span>{`\uD83D\uDDFA\uFE0F 位置：${activity.geography || "-"}`}</span>
@@ -2127,8 +2195,9 @@ export default function App() {
                           })}
                         </div>
                       )}
-                    </article>
-                  ))}
+                      </article>
+                    );
+                  })}
                 </div>
 
                 <button

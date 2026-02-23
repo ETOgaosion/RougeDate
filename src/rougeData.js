@@ -139,10 +139,58 @@ function normalizeColumn(rawColumn, columnPosition) {
   };
 }
 
-function normalizeDay(rawDay, dayPosition) {
+function validateDayCards(columns, timeIndex, dayPosition) {
+  const sourceLabel = `time_${timeIndex}.json day ${dayPosition + 1}`;
+  const seenCardIds = new Map();
+
+  for (const column of columns) {
+    for (const card of column.cards) {
+      const previousColumn = seenCardIds.get(card.id);
+      if (previousColumn !== undefined) {
+        throw new Error(
+          `[${sourceLabel}] Duplicate card id "${card.id}" found in column ${column.columnIndex}. ` +
+            `It already exists in column ${previousColumn}.`,
+        );
+      }
+      seenCardIds.set(card.id, column.columnIndex);
+    }
+  }
+
+  for (let columnPosition = 0; columnPosition < columns.length; columnPosition += 1) {
+    const column = columns[columnPosition];
+    const previousColumn = columnPosition > 0 ? columns[columnPosition - 1] : null;
+    const previousColumnIds = new Set(
+      previousColumn ? previousColumn.cards.map((card) => card.id) : [],
+    );
+
+    for (const card of column.cards) {
+      for (const connectFromId of card.connectFrom) {
+        if (!connectFromId) {
+          continue;
+        }
+        if (previousColumnIds.has(connectFromId)) {
+          continue;
+        }
+
+        const previousLabel = previousColumn
+          ? `column ${previousColumn.columnIndex}`
+          : "no previous column";
+        throw new Error(
+          `[${sourceLabel}] Card id "${card.id}" in column ${column.columnIndex} has invalid ` +
+            `connect_from "${connectFromId}". connect_from can only reference ids from the ` +
+            `immediately previous layer (${previousLabel}).`,
+        );
+      }
+    }
+  }
+}
+
+function normalizeDay(rawDay, dayPosition, timeIndex) {
   const columns = asArray(rawDay?.plans ?? rawDay?.columns)
     .map((column, idx) => normalizeColumn(column, idx))
     .sort((a, b) => a.columnIndex - b.columnIndex);
+
+  validateDayCards(columns, timeIndex, dayPosition);
 
   const cardByKey = {};
   const cardById = {};
@@ -178,7 +226,7 @@ function normalizeTimeData(timeIndex, rawData) {
     duration: asText(rawData?.duration),
     withPerson: asText(rawData?.mate ?? rawData?.with_person),
     days: asArray(rawData?.days ?? rawData?.arrangement).map((day, idx) =>
-      normalizeDay(day, idx),
+      normalizeDay(day, idx, timeIndex),
     ),
   };
 }
